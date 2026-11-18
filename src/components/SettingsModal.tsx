@@ -480,7 +480,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           </div>
           <a
-            href="/minisudoku.html"
+            href="./minisudoku.html"
             download="logicke_hry_6v1.html"
             className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold whitespace-nowrap shadow-xs flex items-center gap-1.5 shrink-0 transition-colors"
           >

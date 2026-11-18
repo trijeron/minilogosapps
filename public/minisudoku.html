@@ -4719,7 +4719,7 @@
     document.getElementById('btn-download-html').addEventListener('click', () => {
       const a = document.createElement('a');
       if (location.protocol.startsWith('http')) {
-        a.href = '/minisudoku.html';
+        a.href = './minisudoku.html';
       } else {
         const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
         a.href = URL.createObjectURL(blob);
