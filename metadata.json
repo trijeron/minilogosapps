@@ -1,0 +1,6 @@
+{
+  "name": "Logické Hry 6×6: Sudoku, Tango & Queens",
+  "description": "Mobilní logické hry 6×6: Mini Sudoku, LinkedIn Tango (Slunce & Měsíc) a LinkedIn Queens (Koruny) s kontrolou v reálném čase a ukládáním stavu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
