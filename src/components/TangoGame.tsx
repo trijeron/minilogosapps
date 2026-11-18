@@ -25,6 +25,7 @@ import {
   saveTangoBestTime,
 } from '../utils/storage';
 import { getDifficultyLabel } from '../utils/format';
+import { GameTab } from './Header';
 
 interface TangoGameProps {
   onRulesClick: () => void;
@@ -32,6 +33,9 @@ interface TangoGameProps {
   onToggleRealTimeCheck: () => void;
   isMuted: boolean;
   onToggleSound: () => void;
+  onGameCompleted?: () => void;
+  onSelectGame?: (tab: GameTab) => void;
+  externalPaused?: boolean;
 }
 
 export const TangoGame: React.FC<TangoGameProps> = ({
@@ -39,6 +43,9 @@ export const TangoGame: React.FC<TangoGameProps> = ({
   onToggleRealTimeCheck,
   isMuted,
   onToggleSound,
+  onGameCompleted,
+  onSelectGame,
+  externalPaused = false,
 }) => {
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [puzzle, setPuzzle] = useState<TangoSymbol[]>([]);
@@ -161,14 +168,33 @@ export const TangoGame: React.FC<TangoGameProps> = ({
 
   // Timer loop
   useEffect(() => {
-    if (isPaused || isCompleted || board.length === 0) return;
+    if (
+      isPaused ||
+      externalPaused ||
+      showRules ||
+      showResetConfirm ||
+      showNewGameConfirm ||
+      isCompleted ||
+      board.length === 0
+    ) {
+      return;
+    }
 
     const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isPaused, isCompleted, board.length]);
+  }, [
+    isPaused,
+    externalPaused,
+    showRules,
+    showResetConfirm,
+    showNewGameConfirm,
+    isCompleted,
+    board.length,
+  ]);
 
   // Conflicts calculation
   const rawConflicts = useMemo(() => {
@@ -301,9 +327,10 @@ export const TangoGame: React.FC<TangoGameProps> = ({
           setIsNewBest(false);
         }
         setShowVictory(true);
+        onGameCompleted?.();
       }
     },
-    [isPaused, isCompleted, given, hintCells, pushHistory, board, solution, horizontalEdges, verticalEdges, bestTimes, difficulty, elapsedSeconds]
+    [isPaused, isCompleted, given, hintCells, pushHistory, board, solution, horizontalEdges, verticalEdges, bestTimes, difficulty, elapsedSeconds, onGameCompleted]
   );
 
   // Symbol input from keypad (1 = sun, 2 = moon)
@@ -339,9 +366,10 @@ export const TangoGame: React.FC<TangoGameProps> = ({
           setIsNewBest(false);
         }
         setShowVictory(true);
+        onGameCompleted?.();
       }
     },
-    [selectedCell, isPaused, isCompleted, given, hintCells, pushHistory, board, solution, horizontalEdges, verticalEdges, bestTimes, difficulty, elapsedSeconds]
+    [selectedCell, isPaused, isCompleted, given, hintCells, pushHistory, board, solution, horizontalEdges, verticalEdges, bestTimes, difficulty, elapsedSeconds, onGameCompleted]
   );
 
   // Erase cell
@@ -415,8 +443,9 @@ export const TangoGame: React.FC<TangoGameProps> = ({
         setIsNewBest(true);
       }
       setShowVictory(true);
+      onGameCompleted?.();
     }
-  }, [hintsLeft, isPaused, isCompleted, selectedCell, given, board, solution, horizontalEdges, verticalEdges, pushHistory, bestTimes, difficulty, elapsedSeconds]);
+  }, [hintsLeft, isPaused, isCompleted, selectedCell, given, board, solution, horizontalEdges, verticalEdges, pushHistory, bestTimes, difficulty, elapsedSeconds, onGameCompleted]);
 
   // Reset board (Preserves hints and hint cells: "Pri resetu napovedy zustavajji")
   const handleResetBoard = useCallback(() => {
@@ -605,6 +634,9 @@ export const TangoGame: React.FC<TangoGameProps> = ({
           const nextDiff = difficulty === 'easy' ? 'medium' : 'hard';
           startNewGame(nextDiff);
         }}
+        currentGame="tango"
+        gameLabel="LinkedIn Tango (6×6)"
+        onSelectGame={onSelectGame}
       />
 
       {/* Reset Confirmation Modal */}

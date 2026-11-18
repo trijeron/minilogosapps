@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Trophy, Clock, Star, RotateCcw, ArrowRight } from 'lucide-react';
 import { ZipBoardSize } from '../types/zip';
 import { formatTime } from '../utils/format';
+import { GameTab } from './Header';
+import { SwitchGameStrip } from './SwitchGameStrip';
 
 interface ZipVictoryModalProps {
   isOpen: boolean;
@@ -11,6 +13,7 @@ interface ZipVictoryModalProps {
   bestTime: number | null;
   onPlayAgain: () => void;
   onNextSize: () => void;
+  onSelectGame?: (tab: GameTab) => void;
 }
 
 export const ZipVictoryModal: React.FC<ZipVictoryModalProps> = ({
@@ -21,6 +24,7 @@ export const ZipVictoryModal: React.FC<ZipVictoryModalProps> = ({
   bestTime,
   onPlayAgain,
   onNextSize,
+  onSelectGame,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -158,6 +162,8 @@ export const ZipVictoryModal: React.FC<ZipVictoryModalProps> = ({
             </button>
           )}
         </div>
+
+        <SwitchGameStrip currentGame="zip" onSelectGame={onSelectGame} />
       </div>
     </div>
   );

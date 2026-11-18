@@ -24,16 +24,23 @@ import {
   saveBestTime,
 } from '../utils/storage';
 import { getDifficultyLabel } from '../utils/format';
+import { GameTab } from './Header';
 
 interface SudokuGameProps {
   realTimeCheck: boolean;
   onToggleRealTimeCheck: () => void;
   isMuted: boolean;
   onToggleSound: () => void;
+  onGameCompleted?: () => void;
+  onSelectGame?: (tab: GameTab) => void;
+  externalPaused?: boolean;
 }
 
 export const SudokuGame: React.FC<SudokuGameProps> = ({
   realTimeCheck,
+  onGameCompleted,
+  onSelectGame,
+  externalPaused = false,
 }) => {
   // Game Core State
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
@@ -158,14 +165,33 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
 
   // Timer loop
   useEffect(() => {
-    if (isPaused || isCompleted || board.length === 0) return;
+    if (
+      isPaused ||
+      externalPaused ||
+      showRules ||
+      showResetConfirm ||
+      showNewGameConfirm ||
+      isCompleted ||
+      board.length === 0
+    ) {
+      return;
+    }
 
     const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isPaused, isCompleted, board.length]);
+  }, [
+    isPaused,
+    externalPaused,
+    showRules,
+    showResetConfirm,
+    showNewGameConfirm,
+    isCompleted,
+    board.length,
+  ]);
 
   // Calculate real-time conflicts and errors
   const rawConflictingCells = useMemo(() => {
@@ -280,6 +306,7 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
             }
 
             setShowVictory(true);
+            onGameCompleted?.();
           }
         } else {
           sound.playErase();
@@ -299,6 +326,7 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
       difficulty,
       elapsedSeconds,
       bestTimes,
+      onGameCompleted,
     ]
   );
 
@@ -395,6 +423,7 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
         setIsNewBest(false);
       }
       setShowVictory(true);
+      onGameCompleted?.();
     }
   }, [
     hintsLeft,
@@ -408,6 +437,7 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
     bestTimes,
     difficulty,
     elapsedSeconds,
+    onGameCompleted,
   ]);
 
   // Handle Board Reset:
@@ -611,6 +641,9 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
           const nextDiff = difficulty === 'easy' ? 'medium' : 'hard';
           startNewGame(nextDiff);
         }}
+        currentGame="sudoku"
+        gameLabel="Mini Sudoku 6×6"
+        onSelectGame={onSelectGame}
       />
 
       {/* Reset Board Confirmation Modal */}

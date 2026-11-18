@@ -49,6 +49,8 @@ import {
   saveMahjongTheme,
   saveMahjongZoom,
 } from '../utils/storage';
+import { GameTab } from './Header';
+import { SwitchGameStrip } from './SwitchGameStrip';
 
 const ZOOM_MIN = 75;
 const ZOOM_MAX = 250;
@@ -56,9 +58,17 @@ const ZOOM_STEP = 15;
 
 interface MahjongGameProps {
   realTimeCheck: boolean;
+  onGameCompleted?: () => void;
+  onSelectGame?: (tab: GameTab) => void;
+  externalPaused?: boolean;
 }
 
-export const MahjongGame: React.FC<MahjongGameProps> = ({ realTimeCheck }) => {
+export const MahjongGame: React.FC<MahjongGameProps> = ({
+  realTimeCheck,
+  onGameCompleted,
+  onSelectGame,
+  externalPaused = false,
+}) => {
   const [layout, setLayout] = useState<MahjongLayoutId>('pyramid');
   const [tiles, setTiles] = useState<MahjongTileModel[]>([]);
   const [history, setHistory] = useState<MahjongMove[]>([]);
@@ -157,12 +167,13 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({ realTimeCheck }) => {
 
   // Timer (časomíra)
   useEffect(() => {
-    if (isPaused || isCompleted || tiles.length === 0) return;
+    if (isPaused || externalPaused || showRules || isCompleted || tiles.length === 0) return;
     const interval = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [isPaused, isCompleted, tiles.length]);
+  }, [isPaused, externalPaused, showRules, isCompleted, tiles.length]);
 
   useEffect(() => {
     return () => {
@@ -260,6 +271,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({ realTimeCheck }) => {
           setIsNewBest(false);
         }
         setShowVictory(true);
+        onGameCompleted?.();
       }
     } else {
       // Switch selection cleanly to newly clicked tile
@@ -553,7 +565,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({ realTimeCheck }) => {
 
       {/* Layered Mahjong Felt Mat (with Zoom & Pan) */}
       <div
-        className={`relative w-full rounded-2xl border-4 shadow-inner overflow-hidden ${
+        className={`relative z-0 isolate w-full rounded-2xl border-4 shadow-inner overflow-hidden ${
           theme === 'comic'
             ? 'border-slate-950'
             : theme === 'fairytale'
@@ -621,7 +633,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({ realTimeCheck }) => {
 
         {/* Frosted Pause Overlay */}
         {isPaused && (
-          <div className="absolute inset-0 z-[999] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
+          <div className="absolute inset-0 z-[600] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
             <h3 className="text-base font-bold mb-1">Časomíra pozastavena</h3>
             <p className="text-xs text-slate-300 mb-4 max-w-xs">
               Kameny jsou během pauzy skryté.
@@ -672,7 +684,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({ realTimeCheck }) => {
 
       {/* Victory Modal */}
       {showVictory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white rounded-3xl p-6 text-center shadow-2xl border border-slate-100 flex flex-col items-center">
             <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3 shadow-inner">
               <Trophy className="w-8 h-8 fill-amber-500 text-amber-600" />
@@ -724,6 +736,8 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({ realTimeCheck }) => {
               <RotateCcw className="w-4 h-4" />
               <span>Hrát další hru</span>
             </button>
+
+            <SwitchGameStrip currentGame="mahjong" onSelectGame={onSelectGame} />
           </div>
         </div>
       )}

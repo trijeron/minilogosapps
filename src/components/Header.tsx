@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX, ShieldCheck, ShieldAlert, Grid, Sun, Moon, Crown, Spade, Layers, Route } from 'lucide-react';
+import { Volume2, VolumeX, ShieldCheck, ShieldAlert, Grid, Sun, Moon, Crown, Spade, Layers, Route, Settings, HelpCircle } from 'lucide-react';
 
 export type GameTab = 'sudoku' | 'tango' | 'queens' | 'minibridge' | 'mahjong' | 'zip';
 
@@ -10,6 +10,8 @@ interface HeaderProps {
   onToggleSound: () => void;
   realTimeCheck: boolean;
   onToggleRealTimeCheck: () => void;
+  onOpenSettings: () => void;
+  onOpenHelp: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,6 +21,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSound,
   realTimeCheck,
   onToggleRealTimeCheck,
+  onOpenSettings,
+  onOpenHelp,
 }) => {
   return (
     <header className="w-full flex flex-col gap-2 pb-1">
@@ -70,17 +74,25 @@ export const Header: React.FC<HeaderProps> = ({
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
 
-          {/* Download standalone HTML */}
-          <a
-            href="/minisudoku.html"
-            download="logicke_hry_6v1.html"
-            title="Stáhnout všech 6 her jako offline HTML soubor"
+          {/* Settings (Learning gate & JSON tasks) */}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            title="Nastavení limitu her, minut a úkolů"
+            className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center justify-center shadow-2xs"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+
+          {/* Help & Teacher Mode Guide */}
+          <button
+            type="button"
+            onClick={onOpenHelp}
+            title="Nápověda ke hrám a jak aktivovat učitelský mód"
             className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 transition-colors flex items-center justify-center shadow-2xs"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          </a>
+            <HelpCircle className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

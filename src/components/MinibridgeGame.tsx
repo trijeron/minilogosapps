@@ -46,12 +46,16 @@ import { loadMinibridgeViewMode, saveMinibridgeViewMode } from '../utils/storage
 import { MinibridgeCard } from './MinibridgeCard';
 import { MinibridgeRulesModal } from './MinibridgeRulesModal';
 import { sound } from '../utils/audio';
+import { GameTab } from './Header';
+import { SwitchGameStrip } from './SwitchGameStrip';
 
 interface MinibridgeGameProps {
   realTimeCheck: boolean;
+  onGameCompleted?: () => void;
+  onSelectGame?: (tab: GameTab) => void;
 }
 
-export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck }) => {
+export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, onGameCompleted, onSelectGame }) => {
   const [dealer, setDealer] = useState<Seat>('north');
   const [hands, setHands] = useState<Record<Seat, Card[]>>(() =>
     dealHandsForPlayerDeclarer()
@@ -248,6 +252,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck })
         if (declarerTricks >= contract.targetTricks) {
           sound.playVictory();
         }
+        onGameCompleted?.();
       } else {
         setCurrentTurn(winner.seat);
         setPhase('PLAYING');
@@ -255,7 +260,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck })
     }, 900);
 
     return () => window.clearTimeout(timer);
-  }, [phase, contract, currentTrick, tricksWon]);
+  }, [phase, contract, currentTrick, tricksWon, onGameCompleted]);
 
   // Determine whether human player controls the current seat on turn
   const isHumanTurn = useMemo(() => {
@@ -1047,6 +1052,8 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck })
                 >
                   Nová hra
                 </button>
+
+                <SwitchGameStrip currentGame="minibridge" onSelectGame={onSelectGame} />
               </div>
             )}
           </div>

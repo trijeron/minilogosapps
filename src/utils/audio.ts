@@ -7,7 +7,7 @@ class SoundManager {
   constructor() {
     // Check saved audio preference
     try {
-      const saved = localStorage.getItem('minisudoku_sound_muted');
+      const saved = sessionStorage.getItem('minisudoku_sound_muted');
       if (saved !== null) {
         this.isMuted = JSON.parse(saved);
       }
@@ -35,7 +35,7 @@ class SoundManager {
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
     try {
-      localStorage.setItem('minisudoku_sound_muted', JSON.stringify(this.isMuted));
+      sessionStorage.setItem('minisudoku_sound_muted', JSON.stringify(this.isMuted));
     } catch {
       // ignore
     }

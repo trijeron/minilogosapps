@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Trophy, Clock, Star, RotateCcw, ArrowRight } from 'lucide-react';
 import { Difficulty } from '../types/sudoku';
 import { formatTime, getDifficultyLabel } from '../utils/format';
+import { GameTab } from './Header';
+import { SwitchGameStrip } from './SwitchGameStrip';
 
 interface VictoryModalProps {
   isOpen: boolean;
@@ -11,6 +13,9 @@ interface VictoryModalProps {
   bestTime: number | null;
   onPlayAgain: () => void;
   onNextDifficulty: () => void;
+  currentGame?: GameTab;
+  gameLabel?: string;
+  onSelectGame?: (tab: GameTab) => void;
 }
 
 export const VictoryModal: React.FC<VictoryModalProps> = ({
@@ -21,6 +26,9 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   bestTime,
   onPlayAgain,
   onNextDifficulty,
+  currentGame = 'sudoku',
+  gameLabel = 'Mini Sudoku 6×6',
+  onSelectGame,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -104,7 +112,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
           Gratulujeme!
         </h2>
         <p className="text-xs text-slate-500 font-medium mb-4">
-          Úspěšně jste vyřešili Mini Sudoku 6×6
+          Úspěšně jste vyřešili {gameLabel}
         </p>
 
         {/* Stats card */}
@@ -164,6 +172,8 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
             </button>
           )}
         </div>
+
+        <SwitchGameStrip currentGame={currentGame} onSelectGame={onSelectGame} />
       </div>
     </div>
   );

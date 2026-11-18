@@ -29,7 +29,7 @@
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col items-center justify-start p-2 sm:p-4">
 
   <!-- Main Container Mobile First -->
-  <main id="main-shell" class="w-full max-w-[420px] bg-white sm:rounded-3xl sm:shadow-lg sm:border sm:border-slate-200 p-3 sm:p-4 flex flex-col gap-2 min-h-[92vh] sm:min-h-0 justify-between">
+  <main id="main-shell" class="relative z-0 isolate w-full max-w-[420px] bg-white sm:rounded-3xl sm:shadow-lg sm:border sm:border-slate-200 p-3 sm:p-4 flex flex-col gap-2 min-h-[92vh] sm:min-h-0 justify-between">
     
     <!-- Top Header & Game Switcher -->
     <header class="w-full flex flex-col gap-2">
@@ -56,8 +56,13 @@
             <svg id="icon-sound-off" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z m11.414-4l4 4m0-4l-4 4"/></svg>
           </button>
 
-          <!-- Rules / Help -->
-          <button id="btn-rules" class="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors" title="Pravidla">
+          <!-- Settings -->
+          <button id="btn-settings" class="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors" title="Nastavení limitu her, minut a úkolů">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+
+          <!-- Help & Teacher Mode Guide -->
+          <button id="btn-rules" class="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-indigo-600 hover:bg-slate-50 transition-colors" title="Nápověda ke hrám a jak aktivovat učitelský mód">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </button>
         </div>
@@ -380,11 +385,11 @@
       </div>
 
       <!-- Layered Mahjong Felt Mat -->
-      <div id="mj-board-wrap" class="relative w-full rounded-2xl border-4 border-[#17332a] shadow-inner overflow-hidden" style="background-color:#214d3d;">
+      <div id="mj-board-wrap" class="relative z-0 isolate w-full rounded-2xl border-4 border-[#17332a] shadow-inner overflow-hidden" style="background-color:#214d3d;">
         <div id="mj-board-scroll" class="w-full overflow-auto max-h-[70vh] sm:max-h-[75vh]">
           <div id="mj-board" class="relative mx-auto" style="width:100%; aspect-ratio:16/11;"></div>
         </div>
-        <div id="mj-pause-overlay" class="hidden absolute inset-0 z-[999] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
+        <div id="mj-pause-overlay" class="hidden absolute inset-0 z-[600] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
           <h3 class="text-base font-bold mb-1">Časomíra pozastavena</h3>
           <p class="text-xs text-slate-300 mb-4 max-w-xs">Kameny jsou během pauzy skryté.</p>
           <button id="btn-mj-resume" type="button" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md active:scale-95">Pokračovat ve hře</button>
@@ -460,7 +465,7 @@
 
   <!-- Modals -->
   <!-- Victory Modal -->
-  <div id="victory-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm hidden">
+  <div id="victory-modal" class="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm hidden">
     <canvas id="victory-confetti" class="pointer-events-none fixed inset-0 z-10 w-full h-full"></canvas>
     <div class="relative z-20 w-full max-w-sm bg-white rounded-3xl p-6 text-center shadow-2xl border border-slate-100 flex flex-col items-center">
       <div class="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
@@ -481,21 +486,182 @@
       <button id="btn-vic-play-again" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-md active:scale-95">
         Hrát další hru
       </button>
+      <div class="w-full pt-3 mt-3 border-t border-slate-200 flex flex-col gap-2">
+        <p class="text-[11px] font-bold text-slate-500 text-center">Přejít na jinou hru</p>
+        <div id="vic-switch-games" class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+          <button type="button" data-switch-game="sudoku" class="vic-switch-btn py-2 px-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Sudoku</button>
+          <button type="button" data-switch-game="tango" class="vic-switch-btn py-2 px-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Tango</button>
+          <button type="button" data-switch-game="queens" class="vic-switch-btn py-2 px-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Queens</button>
+          <button type="button" data-switch-game="minibridge" class="vic-switch-btn py-2 px-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Bridge</button>
+          <button type="button" data-switch-game="mahjong" class="vic-switch-btn py-2 px-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Mahjong</button>
+          <button type="button" data-switch-game="zip" class="vic-switch-btn py-2 px-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Zip</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Rules Modal -->
-  <div id="rules-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs hidden">
-    <div class="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-y-auto">
+  <!-- Help & Teacher Mode Modal -->
+  <div id="rules-modal" class="fixed inset-0 z-[1100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs hidden">
+    <div class="w-full max-w-lg bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col gap-3 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <h3 id="rules-title" class="text-base sm:text-lg font-bold text-slate-900">Pravidla Hry</h3>
-        <button id="btn-close-rules" class="p-1 text-slate-400 hover:text-slate-700">✕</button>
+        <div>
+          <h3 id="rules-title" class="text-base sm:text-lg font-black text-slate-900">Nápověda a učitelský mód</h3>
+          <p class="text-xs text-slate-500">Co dělat v jednotlivých hrách a jak aktivovat učící přestávky</p>
+        </div>
+        <button id="btn-close-rules" class="p-1.5 text-slate-400 hover:text-slate-700">✕</button>
       </div>
-      <div id="rules-content" class="flex flex-col gap-3 py-4 text-xs text-slate-600 leading-relaxed">
+
+      <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl gap-1">
+        <button id="help-tab-games" type="button" class="py-1.5 px-2 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-xs">Co dělat ve hrách (6)</button>
+        <button id="help-tab-teacher" type="button" class="py-1.5 px-2 rounded-lg text-xs font-bold text-slate-600">Jak aktivovat učitelský mód</button>
       </div>
+
+      <div id="help-games-panel" class="flex flex-col gap-2.5">
+        <div id="help-game-pills" class="grid grid-cols-3 sm:grid-cols-6 gap-1">
+          <button type="button" data-help-game="sudoku" class="help-game-btn py-1 px-1.5 rounded-lg border text-[11px] font-bold">Sudoku</button>
+          <button type="button" data-help-game="tango" class="help-game-btn py-1 px-1.5 rounded-lg border text-[11px] font-bold">Tango</button>
+          <button type="button" data-help-game="queens" class="help-game-btn py-1 px-1.5 rounded-lg border text-[11px] font-bold">Queens</button>
+          <button type="button" data-help-game="minibridge" class="help-game-btn py-1 px-1.5 rounded-lg border text-[11px] font-bold">Bridge</button>
+          <button type="button" data-help-game="mahjong" class="help-game-btn py-1 px-1.5 rounded-lg border text-[11px] font-bold">Mahjong</button>
+          <button type="button" data-help-game="zip" class="help-game-btn py-1 px-1.5 rounded-lg border text-[11px] font-bold">Zip</button>
+        </div>
+        <div id="rules-content" class="flex flex-col gap-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 leading-relaxed"></div>
+      </div>
+
+      <div id="help-teacher-panel" class="hidden flex flex-col gap-2.5 text-xs text-slate-600 leading-relaxed">
+        <p><strong>1. Otevřete Nastavení:</strong> Klikněte na ikonu ozubeného kolečka v horní liště a zapněte volbu <em>„Aktivovat učící úkoly po limitu“</em>.</p>
+        <p><strong>2. Limity a počet úkolů:</strong> Zvolte limit podle <strong>počtu odehraných her</strong> nebo <strong>minut hraní</strong> a nastavte 1–3 úkoly na jednu přestávku.</p>
+        <p><strong>3. Vlastní JSON &amp; historie:</strong> Podporovány jsou 3 typy úkolů (<code>match</code> spojení slov, <code>fill</code> doplnění odpovědi, <code>choice</code> výběr 1 z N možností). Předchozí sady se ukládají do <strong>sessionStorage</strong>, kde z nich můžete vybírat.</p>
+        <p><strong>4. Stažení offline HTML:</strong> Tlačítko pro stažení offline souboru je nově uvnitř okna Nastavení.</p>
+        <button id="btn-help-open-settings" type="button" class="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs">Otevřít nastavení učitelského módu</button>
+      </div>
+
       <button id="btn-rules-ok" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs">
         Rozumím, jdeme hrát
       </button>
+    </div>
+  </div>
+
+  <!-- Settings Modal (Learning Gate Limits + History + JSON Editor + Offline Download) -->
+  <div id="settings-modal" class="fixed inset-0 z-[1100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm hidden">
+    <div class="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl border border-slate-100 flex flex-col gap-3.5 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-base sm:text-lg font-black text-slate-900">Nastavení učitelského módu</h3>
+          <p class="text-xs text-slate-500">Limity, historie úkolů v sessionStorage a offline stažení</p>
+        </div>
+        <button id="btn-close-settings" class="p-1.5 text-slate-400 hover:text-slate-700">✕</button>
+      </div>
+
+      <label class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200 cursor-pointer">
+        <div>
+          <p class="text-sm font-bold text-slate-900">Aktivovat učící úkoly po limitu</p>
+          <p class="text-xs text-slate-500">Zobrazí okno s úkolem po dosažení limitu</p>
+        </div>
+        <input id="set-gate-enabled" type="checkbox" class="w-5 h-5 accent-indigo-600 rounded cursor-pointer" />
+      </label>
+
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200">
+          <label class="flex items-center gap-2 cursor-pointer flex-1">
+            <input id="set-by-games" type="checkbox" class="w-4 h-4 accent-indigo-600 rounded" />
+            <span class="text-xs sm:text-sm font-bold text-slate-900">Počet odehraných her</span>
+          </label>
+          <div class="flex items-center gap-1.5">
+            <input id="set-games-limit" type="number" min="1" max="99" value="3" class="w-16 px-2 py-1 rounded-lg border border-slate-300 text-sm font-bold text-center font-mono-num" />
+            <span class="text-xs text-slate-600">her</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200">
+          <label class="flex items-center gap-2 cursor-pointer flex-1">
+            <input id="set-by-minutes" type="checkbox" class="w-4 h-4 accent-indigo-600 rounded" />
+            <span class="text-xs sm:text-sm font-bold text-slate-900">Časový limit hraní</span>
+          </label>
+          <div class="flex items-center gap-1.5">
+            <input id="set-minutes-limit" type="number" min="1" max="240" value="10" class="w-16 px-2 py-1 rounded-lg border border-slate-300 text-sm font-bold text-center font-mono-num" />
+            <span class="text-xs text-slate-600">min</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 px-1">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-slate-700">Úkolů najednou:</span>
+          <select id="set-tasks-count" class="px-2 py-1 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2 font-mono-num">
+          <span id="set-progress-label">Odehráno: 0/3 · 00:00</span>
+          <button id="btn-set-reset-progress" type="button" class="px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-sans font-semibold">Vynulovat</button>
+        </div>
+      </div>
+
+      <!-- Previous task sets in sessionStorage -->
+      <div class="flex flex-col gap-1.5 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+        <div class="flex items-center justify-between text-xs">
+          <span id="set-history-title" class="font-extrabold text-slate-800">Předchozí sady úkolů (1)</span>
+          <span class="text-[11px] text-slate-500">sessionStorage</span>
+        </div>
+        <div id="set-history-list" class="flex flex-col gap-1.5 max-h-32 overflow-y-auto"></div>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-extrabold text-slate-800">Zadání úkolů (JSON)</span>
+          <div class="flex items-center gap-1.5">
+            <button id="btn-set-default-json" type="button" class="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-semibold text-indigo-700">Výchozí angličtina</button>
+            <button id="btn-set-preview" type="button" class="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold">Vyzkoušet</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="set-history-name" type="text" placeholder="Název sady pro historii (volitelné)" class="flex-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-900" />
+          <button id="btn-set-save-history" type="button" class="px-2.5 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-[11px] font-bold shrink-0">Do historie</button>
+        </div>
+        <textarea id="set-json-input" rows="6" spellcheck="false" class="w-full p-2.5 rounded-xl border border-slate-300 bg-slate-50 font-mono text-[11px] text-slate-900 focus:bg-white"></textarea>
+        <div id="set-json-status" class="px-3 py-1.5 rounded-xl border text-xs font-semibold"></div>
+      </div>
+
+      <!-- Offline HTML download inside Settings -->
+      <div class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-bold text-indigo-950">Offline verze aplikace (6v1 HTML)</p>
+          <p class="text-[11px] text-indigo-700">Stáhněte si všech 6 her jako jeden HTML soubor.</p>
+        </div>
+        <button id="btn-download-html" type="button" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold whitespace-nowrap shrink-0">Stáhnout HTML</button>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button id="btn-set-cancel" type="button" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700">Zrušit</button>
+        <button id="btn-set-save" type="button" class="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">Uložit nastavení</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Learning Gate Modal (Match / Fill / Choice) -->
+  <div id="learning-gate-modal" class="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm hidden">
+    <div class="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-lg font-black text-slate-900 leading-tight">Učící přestávka</h3>
+          <p id="gate-subtitle" class="text-xs text-slate-500 font-medium mt-0.5">Limit her dosažen</p>
+        </div>
+        <button id="btn-gate-close-preview" class="hidden p-1.5 text-slate-400 hover:text-slate-700">✕</button>
+      </div>
+      <div id="gate-prompt" class="text-sm sm:text-base font-bold text-slate-900 leading-snug"></div>
+      <div id="gate-error" class="hidden px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold"></div>
+      <div id="gate-body" class="flex flex-col gap-2.5"></div>
+      <div id="gate-success" class="hidden flex flex-col gap-2 pt-1">
+        <div class="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold">
+          Výborně! Úkol je splněný.
+        </div>
+        <button id="btn-gate-continue" type="button" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-sm active:scale-95">
+          Pokračovat ve hře
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1736,6 +1902,7 @@
       document.getElementById('vic-time').textContent = formatTime(sudoku.elapsedSeconds);
       document.getElementById('victory-modal').classList.remove('hidden');
       startConfetti();
+      if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
     }
 
     function checkTangoWin() {
@@ -1751,6 +1918,7 @@
       document.getElementById('vic-time').textContent = formatTime(tango.elapsedSeconds);
       document.getElementById('victory-modal').classList.remove('hidden');
       startConfetti();
+      if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
     }
 
     function checkQueensWin() {
@@ -1769,12 +1937,16 @@
         document.getElementById('vic-time').textContent = formatTime(queens.elapsedSeconds);
         document.getElementById('victory-modal').classList.remove('hidden');
         startConfetti();
+        if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
       }
     }
 
     // Tab Switching
     function switchTab(tab) {
       activeTab = tab;
+      document.querySelectorAll('.vic-switch-btn').forEach(btn => {
+        btn.classList.toggle('hidden', btn.dataset.switchGame === tab);
+      });
       if (delayedSudoku.timer) { clearTimeout(delayedSudoku.timer); delayedSudoku.timer = null; }
       if (delayedTango.timer) { clearTimeout(delayedTango.timer); delayedTango.timer = null; }
       if (delayedQueens.timer) { clearTimeout(delayedQueens.timer); delayedQueens.timer = null; }
@@ -1926,6 +2098,12 @@
 
     // Timer Interval
     setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      if (typeof gateRuntime !== 'undefined' && gateRuntime.open) return;
+      if (!document.getElementById('settings-modal').classList.contains('hidden')) return;
+      if (!document.getElementById('rules-modal').classList.contains('hidden')) return;
+      if (!document.getElementById('victory-modal').classList.contains('hidden')) return;
+
       if (activeTab === 'sudoku' && !sudoku.isPaused && !sudoku.isCompleted) {
         sudoku.elapsedSeconds++;
         document.getElementById('timer-display').textContent = formatTime(sudoku.elapsedSeconds);
@@ -2147,56 +2325,70 @@
       });
     });
 
-    document.getElementById('btn-rules').addEventListener('click', () => {
-      const modal = document.getElementById('rules-modal');
+    function renderHelpGameContent(gameId) {
       const content = document.getElementById('rules-content');
-      if (activeTab === 'sudoku') {
-        document.getElementById('rules-title').textContent = 'Pravidla Mini Sudoku 6×6';
+      document.querySelectorAll('.help-game-btn').forEach(btn => {
+        const active = btn.dataset.helpGame === gameId;
+        btn.className = `help-game-btn py-1 px-1.5 rounded-lg border text-[11px] font-bold transition-colors ${active ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'}`;
+      });
+      if (gameId === 'sudoku') {
         content.innerHTML = `
-          <p><strong>1. Cíl:</strong> Doplňte čísla 1 až 6 bez opakování v řádku, sloupci a bloku 2×3.</p>
-          <p><strong>2. Bloky 2×3:</strong> Mřížka je rozdělena na 6 obdélníků 2 řádky × 3 sloupce.</p>
-          <p><strong>3. Nápovědy:</strong> Máte 3 nápovědy. Při resetu nápovědy zůstávají vyplněné.</p>
+          <p><strong>Mini Sudoku 6×6:</strong> Doplňte čísla 1 až 6 bez opakování v každém řádku, sloupci a obdélníkovém bloku 2×3.</p>
+          <p>K dispozici máte 3 nápovědy. Při resetu nápovědy zůstávají vyplněné.</p>
         `;
-      } else if (activeTab === 'tango') {
-        document.getElementById('rules-title').textContent = 'Pravidla LinkedIn Tango (6×6)';
+      } else if (gameId === 'tango') {
         content.innerHTML = `
-          <p><strong>1. Rovnováha:</strong> V každém řádku i sloupci musí být přesně 3 slunce (☀️) a 3 měsíce (🌙).</p>
-          <p><strong>2. Pravidlo tří:</strong> Vedle sebe ani pod sebou nesmí stát více než 2 stejné symboly.</p>
-          <p><strong>3. Rovnítka (=) & Křížky (×):</strong> Rovnítko = stejné symboly, Křížek = rozdílné symboly.</p>
+          <p><strong>LinkedIn Tango (6×6):</strong> V každém řádku i sloupci musí být přesně 3 slunce (☀️) a 3 měsíce (🌙).</p>
+          <p>Vedle sebe ani pod sebou nesmí stát více než 2 stejné symboly. Značka „=“ znamená stejné symboly, „×“ opačné.</p>
         `;
-      } else if (activeTab === 'queens') {
-        document.getElementById('rules-title').textContent = 'Pravidla LinkedIn Queens (Dámy)';
+      } else if (gameId === 'queens') {
         content.innerHTML = `
-          <p><strong>1. Cíl:</strong> Umístěte dámy (koruny 👑) na šachovnici 6×6, 8×8 nebo až 10×10.</p>
-          <p><strong>2. Pravidla:</strong> 1 dáma v každém řádku, 1 v každém sloupci a 1 v každé barevné oblasti.</p>
-          <p><strong>3. Nedotýkání:</strong> Žádné dvě dámy se nesmí dotýkat ani diagonálně.</p>
-          <p><strong>4. Ovládání:</strong> 1. klik = Dáma (👑), 2. klik = Křížek (✕), 3. klik = Smazat.</p>
+          <p><strong>LinkedIn Queens (Dámy):</strong> Umístěte 1 korunu (👑) do každého řádku, sloupce a barevné oblasti (6×6 až 10×10).</p>
+          <p>Žádné dvě dámy se nesmí dotýkat ani diagonálně. 1. klik = Dáma (👑), 2. klik = Křížek (✕), 3. klik = Smazat.</p>
         `;
-      } else if (activeTab === 'minibridge') {
-        document.getElementById('rules-title').textContent = 'Pravidla Minibridge pro děti';
+      } else if (gameId === 'minibridge') {
         content.innerHTML = `
-          <p><strong>1. Počítání bodů (HCP):</strong> Eso = 4, Král = 3, Dáma = 2, Kluk = 1 (celkem 40 bodů v balíčku).</p>
-          <p><strong>2. Oznámení bodů:</strong> Hráči nahlásí své body. Hra automaticky zahodí rozdaní, kde bys neměl dost bodů, a rozdá nové, abys byl <strong>Vydražitel vždy Ty (Jih)</strong> a Sever byl Tichý hráč (Dummy).</p>
-          <p><strong>3. Výběr trumfů:</strong> Dummy vyloží karty na stůl. Vydražitel zvolí trumfy (ideálně 8+ společných karet v barvě) nebo Bez trumfů (NT) a úroveň: Částečná hra (7 zdvihů) či Hra (9 NT / 10 ♠♥ / 11 ♦♣ při 25+ bodech).</p>
-          <p><strong>4. Sehrávka:</strong> Vynáší hráč po levici Vydražitele. Musí se ctít barva! Pokud ji nemáš, můžeš přebít trumfem nebo zahodit jinou kartu.</p>
+          <p><strong>Minibridge:</strong> Eso = 4, Král = 3, Dáma = 2, Kluk = 1 (celkem 40 HCP). Jih (vy) je vždy Vydražitel a Sever (partner) vyloží karty.</p>
+          <p>Zvolte trumfy (8+ karet v barvě) nebo Bez trumfů (NT) a úroveň závazku (Částečná hra = 7 zdvihů, Hra = 9/10/11 zdvihů). Při sehrávce ctěte barvu.</p>
         `;
-      } else if (activeTab === 'mahjong') {
-        document.getElementById('rules-title').textContent = 'Pravidla Mahjong Solitaire';
+      } else if (gameId === 'mahjong') {
         content.innerHTML = `
-          <p><strong>1. Volné kameny:</strong> Kámen lze vybrat jen tehdy, když na něm nestojí jiný kámen a alespoň z jedné strany (vlevo nebo vpravo) je volný.</p>
-          <p><strong>2. Párování:</strong> Odebírejte dvojice shodných kamenů. V rozložení Želva (144) lze spárovat jakékoli dvě Květiny (K) nebo jakákoli dvě Roční období (R).</p>
-          <p><strong>3. 10 nápověd &amp; Časomíra:</strong> Máte až <strong>10 nápověd</strong> a běží vám <strong>časomíra</strong> (lze ji kdykoli pozastavit).</p>
-          <p><strong>4. Zpět, Zamíchat &amp; Styl:</strong> Každé rozložení je řešitelné. Kdykoli můžete přepnout vzhled kamenů mezi <strong>Komiksovým</strong>, <strong>Pohádkovým</strong> a <strong>Klasickým</strong>.</p>
+          <p><strong>Mahjong Solitaire:</strong> Odebírejte dvojice shodných volných kamenů (nesmí na nich nic ležet a musí být volné zleva nebo zprava).</p>
+          <p>V rozložení Želva lze párovat jakékoli 2 Květiny či 2 Roční období. Nahoře lze měnit styl kamenů (Komiks, Pohádky, Klasický) i zoom (75–250 %).</p>
         `;
       } else {
-        document.getElementById('rules-title').textContent = 'Pravidla hry Zip';
         content.innerHTML = `
-          <p><strong>1. Souvislá cesta:</strong> Tažením myši nebo prstu spojte čísla od <strong>1</strong> postupně až do posledního čísla.</p>
-          <p><strong>2. Celá mřížka a zdi:</strong> Musíte projít každým políčkem mřížky přesně jednou a nesmíte překročit tmavé zdi.</p>
-          <p><strong>3. Návrat zpět:</strong> Přejetím zpět na předchozí políčko cestu automaticky zkrátíte. K dispozici máte i <strong>Zpět</strong>, <strong>Reset</strong> a <strong>Nápovědu</strong>.</p>
+          <p><strong>Zip (5×5, 6×6, 7×7):</strong> Tažením myši nebo prstu nakreslete souvislou cestu od čísla <strong>1</strong> postupně až do posledního čísla.</p>
+          <p>Cesta musí projít každým políčkem přesně jednou a nesmí překročit tmavé stěny. Návrat na předchozí políčko cestu zkrátí.</p>
         `;
       }
-      modal.classList.remove('hidden');
+    }
+
+    function setHelpSection(sec) {
+      const isGames = sec === 'games';
+      document.getElementById('help-games-panel').classList.toggle('hidden', !isGames);
+      document.getElementById('help-teacher-panel').classList.toggle('hidden', isGames);
+      document.getElementById('help-tab-games').className = isGames
+        ? 'py-1.5 px-2 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-xs'
+        : 'py-1.5 px-2 rounded-lg text-xs font-bold text-slate-600';
+      document.getElementById('help-tab-teacher').className = !isGames
+        ? 'py-1.5 px-2 rounded-lg text-xs font-bold bg-white text-indigo-900 shadow-xs'
+        : 'py-1.5 px-2 rounded-lg text-xs font-bold text-slate-600';
+    }
+
+    document.getElementById('btn-rules').addEventListener('click', () => {
+      setHelpSection('games');
+      renderHelpGameContent(activeTab);
+      document.getElementById('rules-modal').classList.remove('hidden');
+    });
+    document.getElementById('help-tab-games').addEventListener('click', () => setHelpSection('games'));
+    document.getElementById('help-tab-teacher').addEventListener('click', () => setHelpSection('teacher'));
+    document.querySelectorAll('.help-game-btn').forEach(btn => {
+      btn.addEventListener('click', () => renderHelpGameContent(btn.dataset.helpGame));
+    });
+    document.getElementById('btn-help-open-settings').addEventListener('click', () => {
+      document.getElementById('rules-modal').classList.add('hidden');
+      document.getElementById('btn-settings').click();
     });
 
     document.getElementById('btn-close-rules').addEventListener('click', () => document.getElementById('rules-modal').classList.add('hidden'));
@@ -2208,6 +2400,12 @@
       else if (activeTab === 'queens') startNewQueens(queensSize);
       else if (activeTab === 'mahjong') startNewMahjong(mj.layout);
       else if (activeTab === 'zip') startNewZip(zipState.size);
+    });
+    document.querySelectorAll('.vic-switch-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('victory-modal').classList.add('hidden');
+        switchTab(btn.dataset.switchGame);
+      });
     });
 
     document.getElementById('btn-toggle-sound').addEventListener('click', () => {
@@ -2351,7 +2549,7 @@
       tricksEW: 0,
       lastWinner: null,
       showHcp: true,
-      viewMode: (typeof localStorage !== 'undefined' ? (function () { try { return localStorage.getItem('minibridge_view_mode_v1') === 'suits' ? 'suits' : 'fan'; } catch (e) { return 'fan'; } })() : 'fan'),
+      viewMode: (typeof sessionStorage !== 'undefined' ? (function () { try { return sessionStorage.getItem('minibridge_view_mode_v1') === 'suits' ? 'suits' : 'fan'; } catch (e) { return 'fan'; } })() : 'fan'),
       timer: null,
       warnTimer: null,
       warning: '',
@@ -2639,6 +2837,7 @@
             mb.phase = 'FINISHED';
             const decTricks = mb.contract.partnership === 'NS' ? mb.tricksNS : mb.tricksEW;
             if (decTricks >= mb.contract.targetTricks) sound.playVictory();
+            if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
           } else {
             mb.currentTurn = winner.seat;
             mb.phase = 'PLAYING';
@@ -2804,11 +3003,23 @@
           <div class="text-base font-black ${ok ? 'text-emerald-700' : 'text-rose-700'} mb-1">${ok ? 'Splněno!' : 'Nesplněno'}</div>
           <div class="text-xs text-slate-600 mb-3">Získáno <strong>${w}</strong> z <strong>${mb.contract.targetTricks}</strong> zdvihů (S+J ${mb.tricksNS} : V+Z ${mb.tricksEW}).</div>
           <button id="btn-mb-finish-new" type="button" class="w-full py-2 rounded-xl bg-[#2d5a27] text-white font-bold text-xs">Nová hra</button>
+          <div class="w-full pt-2.5 mt-2.5 border-t border-slate-200 flex flex-col gap-1.5">
+            <p class="text-[11px] font-bold text-slate-500 text-center">Přejít na jinou hru</p>
+            <div class="grid grid-cols-3 gap-1">
+              <button type="button" data-mb-switch-game="sudoku" class="py-1.5 px-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Sudoku</button>
+              <button type="button" data-mb-switch-game="tango" class="py-1.5 px-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Tango</button>
+              <button type="button" data-mb-switch-game="queens" class="py-1.5 px-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Queens</button>
+              <button type="button" data-mb-switch-game="mahjong" class="py-1.5 px-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold">Mahjong</button>
+              <button type="button" data-mb-switch-game="zip" class="py-1.5 px-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-bold col-span-2">Zip</button>
+            </div>
+          </div>
         </div>`;
       }
     }
 
     document.getElementById('mb-table').addEventListener('click', (e) => {
+      const switchBtn = e.target.closest('[data-mb-switch-game]');
+      if (switchBtn) { switchTab(switchBtn.dataset.mbSwitchGame); return; }
       const cardBtn = e.target.closest('[data-mb-card]');
       if (cardBtn) { playMinibridgeCard(cardBtn.dataset.mbSeat, cardBtn.dataset.mbCard); return; }
       const trumpBtn = e.target.closest('[data-mb-trump]');
@@ -2828,7 +3039,7 @@
     document.querySelectorAll('.mb-mode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         mb.viewMode = btn.dataset.mbMode === 'suits' ? 'suits' : 'fan';
-        try { localStorage.setItem('minibridge_view_mode_v1', mb.viewMode); } catch (e) {}
+        try { sessionStorage.setItem('minibridge_view_mode_v1', mb.viewMode); } catch (e) {}
         renderMinibridge();
       });
     });
@@ -2883,7 +3094,7 @@
     const mj = {
       layout: 'pyramid',
       theme: 'comic',
-      zoomPct: (typeof localStorage !== 'undefined' ? (function () { try { const v = Number(localStorage.getItem('mahjong_zoom_v1')); if (!v || Number.isNaN(v)) return 100; const p = v <= 3 ? Math.round(v * 100) : Math.round(v); return (p >= 75 && p <= 250) ? p : 100; } catch (e) { return 100; } })() : 100),
+      zoomPct: (typeof sessionStorage !== 'undefined' ? (function () { try { const v = Number(sessionStorage.getItem('mahjong_zoom_v1')); if (!v || Number.isNaN(v)) return 100; const p = v <= 3 ? Math.round(v * 100) : Math.round(v); return (p >= 75 && p <= 250) ? p : 100; } catch (e) { return 100; } })() : 100),
       tiles: [],
       history: [],
       hintsLeft: MJ_MAX_HINTS,
@@ -3377,6 +3588,7 @@
           document.getElementById('vic-time').textContent = formatTime(mj.elapsedSeconds);
           document.getElementById('victory-modal').classList.remove('hidden');
           startConfetti();
+          if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
         }
         renderMahjong();
       } else {
@@ -3389,7 +3601,7 @@
 
     const setMjZoomPct = (pct) => {
       mj.zoomPct = Math.min(250, Math.max(75, Math.round(pct)));
-      try { localStorage.setItem('mahjong_zoom_v1', String(mj.zoomPct)); } catch (e) {}
+      try { sessionStorage.setItem('mahjong_zoom_v1', String(mj.zoomPct)); } catch (e) {}
       renderMahjong();
     };
     document.getElementById('mj-zoom-slider').addEventListener('input', (e) => setMjZoomPct(Number(e.target.value)));
@@ -3776,8 +3988,8 @@
     };
     let zipBestTimes = { 5: null, 6: null, 7: null };
     try {
-      if (typeof localStorage !== 'undefined') {
-        const rawB = localStorage.getItem('zip_best_times_v1');
+      if (typeof sessionStorage !== 'undefined') {
+        const rawB = sessionStorage.getItem('zip_best_times_v1');
         if (rawB) zipBestTimes = { ...zipBestTimes, ...JSON.parse(rawB) };
       }
     } catch {}
@@ -3820,7 +4032,7 @@
       const prevBest = zipBestTimes[zipState.size];
       if (prevBest === null || zipState.elapsedSeconds < prevBest) {
         zipBestTimes[zipState.size] = zipState.elapsedSeconds;
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem('zip_best_times_v1', JSON.stringify(zipBestTimes)); } catch {}
+        try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('zip_best_times_v1', JSON.stringify(zipBestTimes)); } catch {}
       }
       renderZip();
       setTimeout(() => {
@@ -3830,6 +4042,7 @@
         document.getElementById('victory-modal').classList.remove('hidden');
         startConfetti();
       }, 600);
+      if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
     }
 
     function startNewZip(size = 6) {
@@ -4090,6 +4303,474 @@
       }
     });
 
+    // --- LEARNING GATE & SETTINGS ---
+    const DEFAULT_GATE_TASKS = [
+      { type: 'match', prompt: 'Spoj anglická slovíčka (zvířata) s českým překladem', pairs: [{ left: 'Dog', right: 'Pes' }, { left: 'Cat', right: 'Kočka' }, { left: 'Bird', right: 'Pták' }, { left: 'Fish', right: 'Ryba' }] },
+      { type: 'fill', prompt: 'Doplň anglicky: Jablko = ____', answer: 'apple', hint: 'Začíná na A (5 písmen)' },
+      { type: 'choice', prompt: 'Jak se anglicky řekne „červená“?', options: ['Blue', 'Red', 'Green', 'Yellow'], correctIndex: 1 },
+      { type: 'match', prompt: 'Spoj barvy v angličtině a češtině', pairs: [{ left: 'Blue', right: 'Modrá' }, { left: 'Green', right: 'Zelená' }, { left: 'White', right: 'Bílá' }, { left: 'Black', right: 'Černá' }] },
+      { type: 'fill', prompt: 'Doplň chybějící slovo: Good ____! (Dobré ráno!)', answer: 'morning', hint: 'Začíná na M' },
+      { type: 'choice', prompt: 'Které anglické slovo znamená „škola“?', options: ['House', 'Book', 'School', 'Table'], correctIndex: 2 },
+      { type: 'match', prompt: 'Spoj čísla v angličtině s číslicí', pairs: [{ left: 'Three', right: '3' }, { left: 'Five', right: '5' }, { left: 'Seven', right: '7' }, { left: 'Ten', right: '10' }] },
+      { type: 'fill', prompt: 'Napiš anglicky překlad slova „voda“:', answer: 'water', hint: 'Začíná na W' },
+      { type: 'choice', prompt: 'Co znamená anglické slovo „Sun“?', options: ['Měsíc', 'Hvězda', 'Mrak', 'Slunce'], correctIndex: 3 }
+    ];
+    let gateSettings = {
+      enabled: true, triggerByGames: true, gamesLimit: 3, triggerByMinutes: false, minutesLimit: 10,
+      tasksPerBreak: 1, customJson: JSON.stringify(DEFAULT_GATE_TASKS, null, 2)
+    };
+    let gateProgress = { gamesSinceLastGate: 0, secondsSinceLastGate: 0, gatePending: false, taskCursor: 0 };
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const sRaw = sessionStorage.getItem('learning_gate_settings_v1');
+        if (sRaw) gateSettings = { ...gateSettings, ...JSON.parse(sRaw) };
+        const pRaw = sessionStorage.getItem('learning_gate_progress_v1');
+        if (pRaw) gateProgress = { ...gateProgress, ...JSON.parse(pRaw) };
+      }
+    } catch {}
+    function persistGate() {
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('learning_gate_settings_v1', JSON.stringify(gateSettings));
+          sessionStorage.setItem('learning_gate_progress_v1', JSON.stringify(gateProgress));
+        }
+      } catch {}
+    }
+
+    function parseGateTasksJson(raw) {
+      try {
+        const parsed = JSON.parse(String(raw || '').trim());
+        const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.tasks) ? parsed.tasks : null);
+        if (!list || !list.length) return { ok: false, tasks: [], error: 'JSON musí být neprázdné pole úkolů [...].' };
+        const out = [];
+        for (let i = 0; i < list.length; i++) {
+          const t = list[i];
+          if (!t || typeof t !== 'object' || !t.prompt) return { ok: false, tasks: [], error: `Úkol #${i + 1}: chybí prompt.` };
+          if (t.type === 'match') {
+            if (!Array.isArray(t.pairs) || t.pairs.length < 2 || t.pairs.some(p => !p || !p.left || !p.right)) {
+              return { ok: false, tasks: [], error: `Úkol #${i + 1} (match): min. 2 dvojice { left, right }.` };
+            }
+            out.push(t);
+          } else if (t.type === 'fill') {
+            if (!t.answer && (!Array.isArray(t.answers) || !t.answers.length)) {
+              return { ok: false, tasks: [], error: `Úkol #${i + 1} (fill): chybí answer.` };
+            }
+            out.push(t);
+          } else if (t.type === 'choice') {
+            if (!Array.isArray(t.options) || t.options.length < 2) return { ok: false, tasks: [], error: `Úkol #${i + 1} (choice): min. 2 options.` };
+            let ci = typeof t.correctIndex === 'number' ? t.correctIndex : -1;
+            if (ci < 0 && typeof t.answer === 'string') ci = t.options.findIndex(o => o.trim().toLowerCase() === t.answer.trim().toLowerCase());
+            if (ci < 0 || ci >= t.options.length) return { ok: false, tasks: [], error: `Úkol #${i + 1} (choice): neplatný correctIndex.` };
+            out.push({ type: 'choice', prompt: t.prompt, options: t.options, correctIndex: ci });
+          } else {
+            return { ok: false, tasks: [], error: `Úkol #${i + 1}: neznámý typ "${t.type}".` };
+          }
+        }
+        return { ok: true, tasks: out };
+      } catch (e) {
+        return { ok: false, tasks: [], error: `Neplatný JSON: ${e.message}` };
+      }
+    }
+
+    let gateRuntime = { open: false, isPreview: false, reason: 'games', tasks: [], idx: 0, solved: false, selL: null, selR: null, matched: new Set(), rightOrder: [], wrongChoices: new Set() };
+
+    function renderLearningGate() {
+      const modal = document.getElementById('learning-gate-modal');
+      if (!gateRuntime.open) { modal.classList.add('hidden'); return; }
+      modal.classList.remove('hidden');
+      const task = gateRuntime.tasks[gateRuntime.idx];
+      const typeLabel = task.type === 'match' ? 'Spojování dvojic' : task.type === 'fill' ? 'Doplnění odpovědi' : 'Výběr z možností';
+      const rLabel = gateRuntime.isPreview ? 'Náhled úkolu' : gateRuntime.reason === 'minutes' ? 'Časový limit dosažen' : 'Limit her dosažen';
+      document.getElementById('gate-subtitle').textContent = `${rLabel} · ${typeLabel}${gateRuntime.tasks.length > 1 ? ` · ${gateRuntime.idx + 1}/${gateRuntime.tasks.length}` : ''}`;
+      document.getElementById('btn-gate-close-preview').classList.toggle('hidden', !gateRuntime.isPreview);
+      document.getElementById('gate-prompt').textContent = task.prompt;
+      document.getElementById('gate-error').classList.add('hidden');
+      document.getElementById('gate-success').classList.toggle('hidden', !gateRuntime.solved);
+      document.getElementById('btn-gate-continue').textContent = gateRuntime.idx < gateRuntime.tasks.length - 1 ? 'Další úkol' : (gateRuntime.isPreview ? 'Dokončit náhled' : 'Pokračovat ve hře');
+
+      const body = document.getElementById('gate-body');
+      body.innerHTML = '';
+
+      if (task.type === 'match') {
+        const info = document.createElement('p');
+        info.className = 'text-xs text-slate-500';
+        info.textContent = `Klikni na slovo vlevo a pak na odpovídající vpravo (${gateRuntime.matched.size}/${task.pairs.length}).`;
+        body.appendChild(info);
+
+        const cols = document.createElement('div');
+        cols.className = 'grid grid-cols-2 gap-2';
+        const leftCol = document.createElement('div'); leftCol.className = 'flex flex-col gap-2';
+        const rightCol = document.createElement('div'); rightCol.className = 'flex flex-col gap-2';
+
+        const tryMatch = (li, ri) => {
+          if (li === ri) {
+            gateRuntime.matched.add(li);
+            gateRuntime.selL = null; gateRuntime.selR = null;
+            sound.play(520);
+            if (gateRuntime.matched.size === task.pairs.length) {
+              gateRuntime.solved = true;
+              sound.playVictory();
+            }
+            renderLearningGate();
+          } else {
+            gateRuntime.selL = null; gateRuntime.selR = null;
+            sound.play(180);
+            renderLearningGate();
+            const err = document.getElementById('gate-error');
+            err.textContent = 'Tato dvojice k sobě nepatří — zkus jinou.';
+            err.classList.remove('hidden');
+          }
+        };
+
+        task.pairs.forEach((p, idx) => {
+          const m = gateRuntime.matched.has(idx);
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.disabled = m || gateRuntime.solved;
+          b.textContent = p.left;
+          b.className = `min-h-[44px] px-3 py-2 rounded-xl border text-xs font-bold text-left ${m ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : gateRuntime.selL === idx ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-800'}`;
+          b.addEventListener('click', () => {
+            if (gateRuntime.selR !== null) tryMatch(idx, gateRuntime.selR);
+            else { gateRuntime.selL = gateRuntime.selL === idx ? null : idx; sound.play(380); renderLearningGate(); }
+          });
+          leftCol.appendChild(b);
+        });
+
+        gateRuntime.rightOrder.forEach(pairIdx => {
+          const p = task.pairs[pairIdx];
+          const m = gateRuntime.matched.has(pairIdx);
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.disabled = m || gateRuntime.solved;
+          b.textContent = p.right;
+          b.className = `min-h-[44px] px-3 py-2 rounded-xl border text-xs font-bold text-left ${m ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : gateRuntime.selR === pairIdx ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-800'}`;
+          b.addEventListener('click', () => {
+            if (gateRuntime.selL !== null) tryMatch(gateRuntime.selL, pairIdx);
+            else { gateRuntime.selR = gateRuntime.selR === pairIdx ? null : pairIdx; sound.play(380); renderLearningGate(); }
+          });
+          rightCol.appendChild(b);
+        });
+        cols.appendChild(leftCol); cols.appendChild(rightCol);
+        body.appendChild(cols);
+      } else if (task.type === 'fill') {
+        const form = document.createElement('form');
+        form.className = 'flex items-center gap-2';
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.placeholder = 'Napiš odpověď...';
+        inp.disabled = gateRuntime.solved;
+        inp.className = 'flex-1 min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 text-sm font-semibold';
+        if (gateRuntime.solved) inp.value = task.answer || (task.answers && task.answers[0]) || '';
+        const sub = document.createElement('button');
+        sub.type = 'submit';
+        sub.textContent = 'Zkontrolovat';
+        sub.className = `min-h-[44px] px-4 rounded-xl bg-slate-900 text-white text-xs font-bold ${gateRuntime.solved ? 'hidden' : ''}`;
+        form.appendChild(inp); form.appendChild(sub);
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const norm = inp.value.trim().replace(/\s+/g, ' ').toLowerCase();
+          const accepted = [task.answer, ...(task.answers || [])].filter(Boolean).map(x => x.trim().replace(/\s+/g, ' ').toLowerCase());
+          if (norm && accepted.includes(norm)) {
+            gateRuntime.solved = true;
+            sound.playVictory();
+            renderLearningGate();
+          } else {
+            sound.play(180);
+            const err = document.getElementById('gate-error');
+            err.textContent = 'Zkus to ještě jednou — zkontroluj překlep.';
+            err.classList.remove('hidden');
+          }
+        });
+        body.appendChild(form);
+        if (task.hint && !gateRuntime.solved) {
+          const hintP = document.createElement('p');
+          hintP.className = 'text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5';
+          hintP.textContent = `Nápověda: ${task.hint}`;
+          body.appendChild(hintP);
+        }
+        setTimeout(() => { if (!gateRuntime.solved) inp.focus(); }, 20);
+      } else if (task.type === 'choice') {
+        task.options.forEach((opt, i) => {
+          const isW = gateRuntime.wrongChoices.has(i);
+          const isR = gateRuntime.solved && i === task.correctIndex;
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.disabled = gateRuntime.solved || isW;
+          b.className = `min-h-[44px] px-3.5 py-2 rounded-xl border text-left text-sm font-semibold flex items-center gap-2.5 ${isR ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : isW ? 'bg-rose-50 border-rose-200 text-rose-400 line-through' : 'bg-white border-slate-200 text-slate-800 hover:bg-indigo-50/40'}`;
+          b.innerHTML = `<span class="w-6 h-6 rounded-lg text-xs font-extrabold flex items-center justify-center ${isR ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'}">${String.fromCharCode(65 + i)}</span><span></span>`;
+          b.querySelector('span:last-child').textContent = opt;
+          b.addEventListener('click', () => {
+            if (i === task.correctIndex) {
+              gateRuntime.solved = true;
+              sound.playVictory();
+              renderLearningGate();
+            } else {
+              gateRuntime.wrongChoices.add(i);
+              sound.play(180);
+              renderLearningGate();
+              const err = document.getElementById('gate-error');
+              err.textContent = 'To není správná odpověď, zkus jinou možnost.';
+              err.classList.remove('hidden');
+            }
+          });
+          body.appendChild(b);
+        });
+      }
+    }
+
+    function prepareGateTaskState(idx) {
+      gateRuntime.idx = idx;
+      gateRuntime.solved = false;
+      gateRuntime.selL = null; gateRuntime.selR = null;
+      gateRuntime.matched = new Set();
+      gateRuntime.wrongChoices = new Set();
+      const t = gateRuntime.tasks[idx];
+      if (t && t.type === 'match') {
+        const arr = t.pairs.map((_, i) => i);
+        for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+        if (arr.length >= 2 && arr.every((v, i) => v === i)) [arr[0], arr[1]] = [arr[1], arr[0]];
+        gateRuntime.rightOrder = arr;
+      } else {
+        gateRuntime.rightOrder = [];
+      }
+    }
+
+    function openLearningGate(reason, customTasks = null) {
+      const parsed = parseGateTasksJson(gateSettings.customJson);
+      const bank = customTasks || (parsed.ok ? parsed.tasks : DEFAULT_GATE_TASKS);
+      const count = Math.max(1, Math.min(5, gateSettings.tasksPerBreak || 1));
+      const picked = [];
+      for (let i = 0; i < count; i++) picked.push(bank[(gateProgress.taskCursor + i) % bank.length]);
+      gateRuntime.open = true;
+      gateRuntime.isPreview = reason === 'preview';
+      gateRuntime.reason = reason;
+      gateRuntime.tasks = picked;
+      prepareGateTaskState(0);
+      renderLearningGate();
+    }
+
+    function recordGateGameCompleted() {
+      if (!gateSettings.enabled) return;
+      gateProgress.gamesSinceLastGate++;
+      if (gateSettings.triggerByGames && gateProgress.gamesSinceLastGate >= gateSettings.gamesLimit) {
+        gateProgress.gatePending = true;
+        persistGate();
+        setTimeout(() => {
+          if (gateProgress.gatePending && !gateRuntime.open) openLearningGate('games');
+        }, 900);
+      } else {
+        persistGate();
+      }
+    }
+
+    setInterval(() => {
+      if (!gateSettings.enabled || !gateSettings.triggerByMinutes || gateRuntime.open) return;
+      if (!document.getElementById('settings-modal').classList.contains('hidden')) return;
+      if (document.visibilityState === 'hidden') return;
+      gateProgress.secondsSinceLastGate++;
+      if (gateProgress.secondsSinceLastGate >= gateSettings.minutesLimit * 60) {
+        gateProgress.gatePending = true;
+        persistGate();
+        openLearningGate('minutes');
+      } else if (gateProgress.secondsSinceLastGate % 5 === 0) {
+        persistGate();
+      }
+    }, 1000);
+
+    const DEFAULT_HISTORY_ENTRY = {
+      id: 'default_english_v1',
+      name: 'Výchozí angličtina (9 úkolů)',
+      json: JSON.stringify(DEFAULT_GATE_TASKS, null, 2),
+      taskCount: DEFAULT_GATE_TASKS.length,
+      typesSummary: 'spojování · doplnění · výběr'
+    };
+    let gateTaskHistory = [DEFAULT_HISTORY_ENTRY];
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const hRaw = sessionStorage.getItem('learning_gate_task_history_v1');
+        if (hRaw) {
+          const parsedH = JSON.parse(hRaw);
+          if (Array.isArray(parsedH) && parsedH.length) gateTaskHistory = parsedH;
+        }
+      }
+    } catch {}
+
+    function persistGateHistory() {
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('learning_gate_task_history_v1', JSON.stringify(gateTaskHistory));
+        }
+      } catch {}
+    }
+
+    function addGateHistoryEntry(rawJson, customName) {
+      const parsed = parseGateTasksJson(rawJson);
+      if (!parsed.ok) return;
+      const trimmed = rawJson.trim();
+      const label = (customName || '').trim() || `${String(parsed.tasks[0]?.prompt || 'Sada úkolů').slice(0, 32)} (${new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })})`;
+      const existing = gateTaskHistory.find(h => h.json.trim() === trimmed && (!customName || h.name === customName.trim()));
+      if (existing) return;
+      const entry = {
+        id: 'hist_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        name: label,
+        json: trimmed,
+        taskCount: parsed.tasks.length,
+        typesSummary: `${parsed.tasks.length} úkolů`
+      };
+      gateTaskHistory = [entry, ...gateTaskHistory.filter(h => h.json.trim() !== trimmed)].slice(0, 20);
+      persistGateHistory();
+    }
+
+    function renderSettingsHistory() {
+      const listEl = document.getElementById('set-history-list');
+      const titleEl = document.getElementById('set-history-title');
+      if (!listEl || !titleEl) return;
+      titleEl.textContent = `Předchozí sady úkolů (${gateTaskHistory.length})`;
+      const currentVal = document.getElementById('set-json-input').value.trim();
+      listEl.innerHTML = '';
+      gateTaskHistory.forEach(entry => {
+        const isSelected = entry.json.trim() === currentVal;
+        const isDef = entry.id === 'default_english_v1';
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl border ${isSelected ? 'bg-indigo-50 border-indigo-300 text-indigo-950' : 'bg-white border-slate-200 text-slate-800'}`;
+        const pickBtn = document.createElement('button');
+        pickBtn.type = 'button';
+        pickBtn.className = 'flex-1 text-left min-w-0';
+        pickBtn.innerHTML = `<p class="text-xs font-bold truncate"></p><p class="text-[10px] text-slate-500">${entry.taskCount} úkolů</p>`;
+        pickBtn.querySelector('p').textContent = entry.name;
+        pickBtn.addEventListener('click', () => {
+          document.getElementById('set-json-input').value = entry.json;
+          document.getElementById('set-history-name').value = isDef ? '' : entry.name;
+          refreshSettingsJsonValidation();
+          renderSettingsHistory();
+        });
+        row.appendChild(pickBtn);
+        if (!isDef) {
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'p-1 text-slate-400 hover:text-rose-600 text-xs font-bold';
+          delBtn.textContent = '✕';
+          delBtn.addEventListener('click', () => {
+            gateTaskHistory = gateTaskHistory.filter(h => h.id !== entry.id);
+            if (!gateTaskHistory.length) gateTaskHistory = [DEFAULT_HISTORY_ENTRY];
+            persistGateHistory();
+            renderSettingsHistory();
+          });
+          row.appendChild(delBtn);
+        }
+        listEl.appendChild(row);
+      });
+    }
+
+    function refreshSettingsJsonValidation() {
+      const res = parseGateTasksJson(document.getElementById('set-json-input').value);
+      const st = document.getElementById('set-json-status');
+      const saveBtn = document.getElementById('btn-set-save');
+      if (res.ok) {
+        st.textContent = `✓ Platný JSON · Načteno ${res.tasks.length} úkolů`;
+        st.className = 'px-3 py-1.5 rounded-xl border text-xs font-semibold bg-emerald-50 border-emerald-200 text-emerald-900';
+        saveBtn.disabled = false;
+      } else {
+        st.textContent = res.error;
+        st.className = 'px-3 py-1.5 rounded-xl border text-xs font-semibold bg-rose-50 border-rose-200 text-rose-800';
+        saveBtn.disabled = document.getElementById('set-gate-enabled').checked;
+      }
+      return res;
+    }
+
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      document.getElementById('set-gate-enabled').checked = gateSettings.enabled;
+      document.getElementById('set-by-games').checked = gateSettings.triggerByGames;
+      document.getElementById('set-games-limit').value = gateSettings.gamesLimit;
+      document.getElementById('set-by-minutes').checked = gateSettings.triggerByMinutes;
+      document.getElementById('set-minutes-limit').value = gateSettings.minutesLimit;
+      document.getElementById('set-tasks-count').value = String(gateSettings.tasksPerBreak || 1);
+      document.getElementById('set-json-input').value = gateSettings.customJson;
+      document.getElementById('set-history-name').value = '';
+      document.getElementById('set-progress-label').textContent = `Odehráno: ${gateProgress.gamesSinceLastGate}/${gateSettings.gamesLimit} · ${formatTime(gateProgress.secondsSinceLastGate)}`;
+      refreshSettingsJsonValidation();
+      renderSettingsHistory();
+      document.getElementById('settings-modal').classList.remove('hidden');
+    });
+    document.getElementById('set-json-input').addEventListener('input', () => {
+      refreshSettingsJsonValidation();
+      renderSettingsHistory();
+    });
+    document.getElementById('set-gate-enabled').addEventListener('change', refreshSettingsJsonValidation);
+    document.getElementById('btn-set-default-json').addEventListener('click', () => {
+      document.getElementById('set-json-input').value = JSON.stringify(DEFAULT_GATE_TASKS, null, 2);
+      refreshSettingsJsonValidation();
+      renderSettingsHistory();
+    });
+    document.getElementById('btn-set-save-history').addEventListener('click', () => {
+      addGateHistoryEntry(document.getElementById('set-json-input').value, document.getElementById('set-history-name').value);
+      renderSettingsHistory();
+    });
+    document.getElementById('btn-set-reset-progress').addEventListener('click', () => {
+      gateProgress.gamesSinceLastGate = 0; gateProgress.secondsSinceLastGate = 0; gateProgress.gatePending = false;
+      persistGate();
+      document.getElementById('set-progress-label').textContent = `Odehráno: 0/${gateSettings.gamesLimit} · 00:00`;
+    });
+    document.getElementById('btn-set-preview').addEventListener('click', () => {
+      const res = refreshSettingsJsonValidation();
+      const cnt = Math.max(1, Math.min(5, parseInt(document.getElementById('set-tasks-count').value, 10) || 1));
+      if (res.ok) openLearningGate('preview', res.tasks.slice(0, cnt));
+    });
+    document.getElementById('btn-download-html').addEventListener('click', () => {
+      const a = document.createElement('a');
+      if (location.protocol.startsWith('http')) {
+        a.href = '/minisudoku.html';
+      } else {
+        const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
+        a.href = URL.createObjectURL(blob);
+      }
+      a.download = 'logicke_hry_6v1.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+    document.getElementById('btn-close-settings').addEventListener('click', () => document.getElementById('settings-modal').classList.add('hidden'));
+    document.getElementById('btn-set-cancel').addEventListener('click', () => document.getElementById('settings-modal').classList.add('hidden'));
+    document.getElementById('btn-set-save').addEventListener('click', () => {
+      const rawJson = document.getElementById('set-json-input').value;
+      addGateHistoryEntry(rawJson, document.getElementById('set-history-name').value);
+      gateSettings = {
+        enabled: document.getElementById('set-gate-enabled').checked,
+        triggerByGames: document.getElementById('set-by-games').checked,
+        gamesLimit: Math.max(1, Math.min(99, parseInt(document.getElementById('set-games-limit').value, 10) || 1)),
+        triggerByMinutes: document.getElementById('set-by-minutes').checked,
+        minutesLimit: Math.max(1, Math.min(240, parseInt(document.getElementById('set-minutes-limit').value, 10) || 1)),
+        tasksPerBreak: Math.max(1, Math.min(5, parseInt(document.getElementById('set-tasks-count').value, 10) || 1)),
+        customJson: rawJson
+      };
+      if (!gateSettings.enabled) gateProgress.gatePending = false;
+      persistGate();
+      document.getElementById('settings-modal').classList.add('hidden');
+    });
+    document.getElementById('btn-gate-continue').addEventListener('click', () => {
+      if (!gateRuntime.solved) return;
+      if (gateRuntime.idx < gateRuntime.tasks.length - 1) {
+        prepareGateTaskState(gateRuntime.idx + 1);
+        renderLearningGate();
+      } else {
+        gateRuntime.open = false;
+        if (!gateRuntime.isPreview) {
+          gateProgress.gamesSinceLastGate = 0;
+          gateProgress.secondsSinceLastGate = 0;
+          gateProgress.gatePending = false;
+          const bank = parseGateTasksJson(gateSettings.customJson);
+          const len = bank.ok ? bank.tasks.length : DEFAULT_GATE_TASKS.length;
+          gateProgress.taskCursor = (gateProgress.taskCursor + gateRuntime.tasks.length) % len;
+          persistGate();
+        }
+        renderLearningGate();
+      }
+    });
+    document.getElementById('btn-gate-close-preview').addEventListener('click', () => {
+      gateRuntime.open = false;
+      renderLearningGate();
+    });
+
     // Init
     setupSudokuGrid();
     setupTangoGrid();
@@ -4100,6 +4781,7 @@
     startNewMahjong('pyramid');
     startNewZip(6);
     switchTab('sudoku');
+    if (gateSettings.enabled && gateProgress.gatePending) openLearningGate('games');
   </script>
 </body>
 </html>

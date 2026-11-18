@@ -22,12 +22,21 @@ import {
   loadZipBestTimes,
   saveZipBestTime,
 } from '../utils/storage';
+import { GameTab } from './Header';
 
 interface ZipGameProps {
   realTimeCheck: boolean;
+  onGameCompleted?: () => void;
+  onSelectGame?: (tab: GameTab) => void;
+  externalPaused?: boolean;
 }
 
-export const ZipGame: React.FC<ZipGameProps> = ({ realTimeCheck }) => {
+export const ZipGame: React.FC<ZipGameProps> = ({
+  realTimeCheck,
+  onGameCompleted,
+  onSelectGame,
+  externalPaused = false,
+}) => {
   const [boardSize, setBoardSize] = useState<ZipBoardSize>(6);
   const [numbers, setNumbers] = useState<number[]>([]);
   const [maxNumber, setMaxNumber] = useState<number>(2);
@@ -173,12 +182,22 @@ export const ZipGame: React.FC<ZipGameProps> = ({ realTimeCheck }) => {
 
   // Stopwatch loop
   useEffect(() => {
-    if (isPaused || isCompleted || numbers.length === 0) return;
+    if (
+      isPaused ||
+      externalPaused ||
+      showRules ||
+      showNewGameConfirm ||
+      isCompleted ||
+      numbers.length === 0
+    ) {
+      return;
+    }
     const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [isPaused, isCompleted, numbers.length]);
+  }, [isPaused, externalPaused, showRules, showNewGameConfirm, isCompleted, numbers.length]);
 
   const nextExpectedNumber = useMemo(
     () => getNextExpectedZipNumber(path, numbers),
@@ -236,9 +255,10 @@ export const ZipGame: React.FC<ZipGameProps> = ({ realTimeCheck }) => {
         victoryTimerRef.current = window.setTimeout(() => {
           setShowVictory(true);
         }, 620);
+        onGameCompleted?.();
       }
     },
-    [boardSize, numbers, maxNumber, horizontalWalls, verticalWalls, bestTimes, elapsedSeconds]
+    [boardSize, numbers, maxNumber, horizontalWalls, verticalWalls, bestTimes, elapsedSeconds, onGameCompleted]
   );
 
   const commitPathUpdate = useCallback(
@@ -636,6 +656,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({ realTimeCheck }) => {
           const nextSize: ZipBoardSize = boardSize === 5 ? 6 : 7;
           startNewGame(nextSize);
         }}
+        onSelectGame={onSelectGame}
       />
 
       {/* New Game Confirm Modal */}

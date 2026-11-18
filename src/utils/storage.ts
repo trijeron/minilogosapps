@@ -9,6 +9,15 @@ import {
 } from '../types/mahjong';
 import { MinibridgeViewMode } from '../types/minibridge';
 import { ZipBestTimes, ZipState } from '../types/zip';
+import {
+  LearningGateProgress,
+  LearningGateSettings,
+  LearningTaskHistoryEntry,
+} from '../types/learningGate';
+import {
+  DEFAULT_LEARNING_GATE_SETTINGS,
+  DEFAULT_TASK_HISTORY_ENTRY,
+} from './learningTasks';
 import { isValidTangoBoard, isTangoHumanSolvable } from './tangoEngine';
 
 const GAME_STATE_KEY = 'minisudoku_saved_game_v1';
@@ -16,7 +25,7 @@ const BEST_TIMES_KEY = 'minisudoku_best_times_v1';
 
 export function saveGameStateToStorage(state: SudokuState): void {
   try {
-    localStorage.setItem(GAME_STATE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(GAME_STATE_KEY, JSON.stringify(state));
   } catch (err) {
     console.error('Failed to save Sudoku state:', err);
   }
@@ -24,7 +33,7 @@ export function saveGameStateToStorage(state: SudokuState): void {
 
 export function loadGameStateFromStorage(): SudokuState | null {
   try {
-    const raw = localStorage.getItem(GAME_STATE_KEY);
+    const raw = sessionStorage.getItem(GAME_STATE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
 
@@ -46,7 +55,7 @@ export function loadGameStateFromStorage(): SudokuState | null {
 
 export function clearSavedGameState(): void {
   try {
-    localStorage.removeItem(GAME_STATE_KEY);
+    sessionStorage.removeItem(GAME_STATE_KEY);
   } catch (err) {
     console.error('Failed to clear saved Sudoku state:', err);
   }
@@ -59,7 +68,7 @@ export function loadBestTimes(): BestTimes {
     hard: null,
   };
   try {
-    const raw = localStorage.getItem(BEST_TIMES_KEY);
+    const raw = sessionStorage.getItem(BEST_TIMES_KEY);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw);
     return {
@@ -78,7 +87,7 @@ export function saveBestTime(difficulty: Difficulty, seconds: number): BestTimes
   if (prev === null || seconds < prev) {
     current[difficulty] = seconds;
     try {
-      localStorage.setItem(BEST_TIMES_KEY, JSON.stringify(current));
+      sessionStorage.setItem(BEST_TIMES_KEY, JSON.stringify(current));
     } catch {
       // ignore
     }
@@ -92,7 +101,7 @@ const TANGO_BEST_TIMES_KEY = 'tango_best_times_v1';
 
 export function saveTangoStateToStorage(state: TangoState): void {
   try {
-    localStorage.setItem(TANGO_STATE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(TANGO_STATE_KEY, JSON.stringify(state));
   } catch (err) {
     console.error('Failed to save Tango state:', err);
   }
@@ -100,7 +109,7 @@ export function saveTangoStateToStorage(state: TangoState): void {
 
 export function loadTangoStateFromStorage(): TangoState | null {
   try {
-    const raw = localStorage.getItem(TANGO_STATE_KEY);
+    const raw = sessionStorage.getItem(TANGO_STATE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (
@@ -122,7 +131,7 @@ export function loadTangoStateFromStorage(): TangoState | null {
       if (valid) {
         return parsed as TangoState;
       }
-      localStorage.removeItem(TANGO_STATE_KEY);
+      sessionStorage.removeItem(TANGO_STATE_KEY);
     }
   } catch (err) {
     console.error('Failed to load Tango state:', err);
@@ -132,7 +141,7 @@ export function loadTangoStateFromStorage(): TangoState | null {
 
 export function clearTangoSavedState(): void {
   try {
-    localStorage.removeItem(TANGO_STATE_KEY);
+    sessionStorage.removeItem(TANGO_STATE_KEY);
   } catch (err) {
     console.error('Failed to clear Tango state:', err);
   }
@@ -141,7 +150,7 @@ export function clearTangoSavedState(): void {
 export function loadTangoBestTimes(): BestTimes {
   const defaults: BestTimes = { easy: null, medium: null, hard: null };
   try {
-    const raw = localStorage.getItem(TANGO_BEST_TIMES_KEY);
+    const raw = sessionStorage.getItem(TANGO_BEST_TIMES_KEY);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw);
     return {
@@ -160,7 +169,7 @@ export function saveTangoBestTime(difficulty: Difficulty, seconds: number): Best
   if (prev === null || seconds < prev) {
     current[difficulty] = seconds;
     try {
-      localStorage.setItem(TANGO_BEST_TIMES_KEY, JSON.stringify(current));
+      sessionStorage.setItem(TANGO_BEST_TIMES_KEY, JSON.stringify(current));
     } catch {
       // ignore
     }
@@ -174,7 +183,7 @@ const QUEENS_BEST_TIMES_KEY = 'queens_best_times_v1';
 
 export function saveQueensStateToStorage(state: QueensState): void {
   try {
-    localStorage.setItem(QUEENS_STATE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(QUEENS_STATE_KEY, JSON.stringify(state));
   } catch (err) {
     console.error('Failed to save Queens state:', err);
   }
@@ -182,7 +191,7 @@ export function saveQueensStateToStorage(state: QueensState): void {
 
 export function loadQueensStateFromStorage(): QueensState | null {
   try {
-    const raw = localStorage.getItem(QUEENS_STATE_KEY);
+    const raw = sessionStorage.getItem(QUEENS_STATE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (
@@ -202,7 +211,7 @@ export function loadQueensStateFromStorage(): QueensState | null {
 
 export function clearQueensSavedState(): void {
   try {
-    localStorage.removeItem(QUEENS_STATE_KEY);
+    sessionStorage.removeItem(QUEENS_STATE_KEY);
   } catch (err) {
     console.error('Failed to clear Queens state:', err);
   }
@@ -211,7 +220,7 @@ export function clearQueensSavedState(): void {
 export function loadQueensBestTimes(): BestTimes {
   const defaults: BestTimes = { easy: null, medium: null, hard: null };
   try {
-    const raw = localStorage.getItem(QUEENS_BEST_TIMES_KEY);
+    const raw = sessionStorage.getItem(QUEENS_BEST_TIMES_KEY);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw);
     return {
@@ -230,7 +239,7 @@ export function saveQueensBestTime(difficulty: Difficulty, seconds: number): Bes
   if (prev === null || seconds < prev) {
     current[difficulty] = seconds;
     try {
-      localStorage.setItem(QUEENS_BEST_TIMES_KEY, JSON.stringify(current));
+      sessionStorage.setItem(QUEENS_BEST_TIMES_KEY, JSON.stringify(current));
     } catch {
       // ignore
     }
@@ -244,7 +253,7 @@ const MAHJONG_BEST_TIMES_KEY = 'mahjong_best_times_v1';
 
 export function saveMahjongStateToStorage(state: MahjongState): void {
   try {
-    localStorage.setItem(MAHJONG_STATE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(MAHJONG_STATE_KEY, JSON.stringify(state));
   } catch (err) {
     console.error('Failed to save Mahjong state:', err);
   }
@@ -252,7 +261,7 @@ export function saveMahjongStateToStorage(state: MahjongState): void {
 
 export function loadMahjongStateFromStorage(): MahjongState | null {
   try {
-    const raw = localStorage.getItem(MAHJONG_STATE_KEY);
+    const raw = sessionStorage.getItem(MAHJONG_STATE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (
@@ -271,7 +280,7 @@ export function loadMahjongStateFromStorage(): MahjongState | null {
 
 export function clearMahjongSavedState(): void {
   try {
-    localStorage.removeItem(MAHJONG_STATE_KEY);
+    sessionStorage.removeItem(MAHJONG_STATE_KEY);
   } catch (err) {
     console.error('Failed to clear Mahjong state:', err);
   }
@@ -280,7 +289,7 @@ export function clearMahjongSavedState(): void {
 export function loadMahjongBestTimes(): MahjongBestTimes {
   const defaults: MahjongBestTimes = { pyramid: null, bridge: null, turtle: null };
   try {
-    const raw = localStorage.getItem(MAHJONG_BEST_TIMES_KEY);
+    const raw = sessionStorage.getItem(MAHJONG_BEST_TIMES_KEY);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw);
     return {
@@ -302,7 +311,7 @@ export function saveMahjongBestTime(
   if (prev === null || seconds < prev) {
     current[layout] = seconds;
     try {
-      localStorage.setItem(MAHJONG_BEST_TIMES_KEY, JSON.stringify(current));
+      sessionStorage.setItem(MAHJONG_BEST_TIMES_KEY, JSON.stringify(current));
     } catch {
       // ignore
     }
@@ -314,7 +323,7 @@ const MAHJONG_THEME_KEY = 'mahjong_theme_v1';
 
 export function loadMahjongTheme(): MahjongTheme {
   try {
-    const raw = localStorage.getItem(MAHJONG_THEME_KEY);
+    const raw = sessionStorage.getItem(MAHJONG_THEME_KEY);
     if (raw === 'classic' || raw === 'comic' || raw === 'fairytale') return raw;
   } catch {
     // ignore
@@ -324,7 +333,7 @@ export function loadMahjongTheme(): MahjongTheme {
 
 export function saveMahjongTheme(theme: MahjongTheme): void {
   try {
-    localStorage.setItem(MAHJONG_THEME_KEY, theme);
+    sessionStorage.setItem(MAHJONG_THEME_KEY, theme);
   } catch {
     // ignore
   }
@@ -334,7 +343,7 @@ const MAHJONG_ZOOM_KEY = 'mahjong_zoom_v1';
 
 export function loadMahjongZoom(): number {
   try {
-    const raw = localStorage.getItem(MAHJONG_ZOOM_KEY);
+    const raw = sessionStorage.getItem(MAHJONG_ZOOM_KEY);
     if (!raw) return 100;
     const val = Number(raw);
     if (Number.isNaN(val)) return 100;
@@ -348,7 +357,7 @@ export function loadMahjongZoom(): number {
 
 export function saveMahjongZoom(zoomPct: number): void {
   try {
-    localStorage.setItem(MAHJONG_ZOOM_KEY, String(zoomPct));
+    sessionStorage.setItem(MAHJONG_ZOOM_KEY, String(zoomPct));
   } catch {
     // ignore
   }
@@ -359,7 +368,7 @@ const MINIBRIDGE_VIEW_MODE_KEY = 'minibridge_view_mode_v1';
 
 export function loadMinibridgeViewMode(): MinibridgeViewMode {
   try {
-    const raw = localStorage.getItem(MINIBRIDGE_VIEW_MODE_KEY);
+    const raw = sessionStorage.getItem(MINIBRIDGE_VIEW_MODE_KEY);
     if (raw === 'fan' || raw === 'suits') return raw;
   } catch {
     // ignore
@@ -369,7 +378,7 @@ export function loadMinibridgeViewMode(): MinibridgeViewMode {
 
 export function saveMinibridgeViewMode(mode: MinibridgeViewMode): void {
   try {
-    localStorage.setItem(MINIBRIDGE_VIEW_MODE_KEY, mode);
+    sessionStorage.setItem(MINIBRIDGE_VIEW_MODE_KEY, mode);
   } catch {
     // ignore
   }
@@ -381,7 +390,7 @@ const ZIP_BEST_TIMES_KEY = 'zip_best_times_v1';
 
 export function saveZipStateToStorage(state: ZipState): void {
   try {
-    localStorage.setItem(ZIP_STATE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(ZIP_STATE_KEY, JSON.stringify(state));
   } catch (err) {
     console.error('Failed to save Zip state:', err);
   }
@@ -389,7 +398,7 @@ export function saveZipStateToStorage(state: ZipState): void {
 
 export function loadZipStateFromStorage(): ZipState | null {
   try {
-    const raw = localStorage.getItem(ZIP_STATE_KEY);
+    const raw = sessionStorage.getItem(ZIP_STATE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     const sz = parsed.size;
@@ -413,7 +422,7 @@ export function loadZipStateFromStorage(): ZipState | null {
 
 export function clearZipSavedState(): void {
   try {
-    localStorage.removeItem(ZIP_STATE_KEY);
+    sessionStorage.removeItem(ZIP_STATE_KEY);
   } catch (err) {
     console.error('Failed to clear Zip state:', err);
   }
@@ -422,7 +431,7 @@ export function clearZipSavedState(): void {
 export function loadZipBestTimes(): ZipBestTimes {
   const defaults: ZipBestTimes = { 5: null, 6: null, 7: null };
   try {
-    const raw = localStorage.getItem(ZIP_BEST_TIMES_KEY);
+    const raw = sessionStorage.getItem(ZIP_BEST_TIMES_KEY);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw);
     return {
@@ -441,13 +450,157 @@ export function saveZipBestTime(size: 5 | 6 | 7, seconds: number): ZipBestTimes 
   if (prev === null || seconds < prev) {
     current[size] = seconds;
     try {
-      localStorage.setItem(ZIP_BEST_TIMES_KEY, JSON.stringify(current));
+      sessionStorage.setItem(ZIP_BEST_TIMES_KEY, JSON.stringify(current));
     } catch {
       // ignore
     }
   }
   return current;
 }
+
+// --- Learning Gate Settings & Progress ---
+const LEARNING_SETTINGS_KEY = 'learning_gate_settings_v1';
+const LEARNING_PROGRESS_KEY = 'learning_gate_progress_v1';
+
+export function loadLearningGateSettings(): LearningGateSettings {
+  try {
+    const raw = sessionStorage.getItem(LEARNING_SETTINGS_KEY);
+    if (!raw) return DEFAULT_LEARNING_GATE_SETTINGS;
+    const parsed = JSON.parse(raw);
+    return {
+      enabled: typeof parsed.enabled === 'boolean' ? parsed.enabled : DEFAULT_LEARNING_GATE_SETTINGS.enabled,
+      triggerByGames:
+        typeof parsed.triggerByGames === 'boolean'
+          ? parsed.triggerByGames
+          : DEFAULT_LEARNING_GATE_SETTINGS.triggerByGames,
+      gamesLimit:
+        typeof parsed.gamesLimit === 'number' && parsed.gamesLimit >= 1 && parsed.gamesLimit <= 99
+          ? Math.floor(parsed.gamesLimit)
+          : DEFAULT_LEARNING_GATE_SETTINGS.gamesLimit,
+      triggerByMinutes:
+        typeof parsed.triggerByMinutes === 'boolean'
+          ? parsed.triggerByMinutes
+          : DEFAULT_LEARNING_GATE_SETTINGS.triggerByMinutes,
+      minutesLimit:
+        typeof parsed.minutesLimit === 'number' && parsed.minutesLimit >= 1 && parsed.minutesLimit <= 240
+          ? Math.floor(parsed.minutesLimit)
+          : DEFAULT_LEARNING_GATE_SETTINGS.minutesLimit,
+      tasksPerBreak:
+        typeof parsed.tasksPerBreak === 'number' && parsed.tasksPerBreak >= 1 && parsed.tasksPerBreak <= 5
+          ? Math.floor(parsed.tasksPerBreak)
+          : DEFAULT_LEARNING_GATE_SETTINGS.tasksPerBreak,
+      customJson:
+        typeof parsed.customJson === 'string' && parsed.customJson.trim().length > 0
+          ? parsed.customJson
+          : DEFAULT_LEARNING_GATE_SETTINGS.customJson,
+    };
+  } catch {
+    return DEFAULT_LEARNING_GATE_SETTINGS;
+  }
+}
+
+export function saveLearningGateSettings(settings: LearningGateSettings): void {
+  try {
+    sessionStorage.setItem(LEARNING_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (err) {
+    console.error('Failed to save learning gate settings:', err);
+  }
+}
+
+export function loadLearningGateProgress(): LearningGateProgress {
+  const defaults: LearningGateProgress = {
+    gamesSinceLastGate: 0,
+    secondsSinceLastGate: 0,
+    gatePending: false,
+    taskCursor: 0,
+  };
+  try {
+    const raw = sessionStorage.getItem(LEARNING_PROGRESS_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    return {
+      gamesSinceLastGate:
+        typeof parsed.gamesSinceLastGate === 'number' && parsed.gamesSinceLastGate >= 0
+          ? Math.floor(parsed.gamesSinceLastGate)
+          : 0,
+      secondsSinceLastGate:
+        typeof parsed.secondsSinceLastGate === 'number' && parsed.secondsSinceLastGate >= 0
+          ? Math.floor(parsed.secondsSinceLastGate)
+          : 0,
+      gatePending: Boolean(parsed.gatePending),
+      taskCursor:
+        typeof parsed.taskCursor === 'number' && parsed.taskCursor >= 0
+          ? Math.floor(parsed.taskCursor)
+          : 0,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+export function saveLearningGateProgress(progress: LearningGateProgress): void {
+  try {
+    sessionStorage.setItem(LEARNING_PROGRESS_KEY, JSON.stringify(progress));
+  } catch (err) {
+    console.error('Failed to save learning gate progress:', err);
+  }
+}
+
+const LEARNING_TASK_HISTORY_KEY = 'learning_gate_task_history_v1';
+const MAX_TASK_HISTORY_ENTRIES = 20;
+
+export function loadLearningTaskHistory(): LearningTaskHistoryEntry[] {
+  try {
+    const raw = sessionStorage.getItem(LEARNING_TASK_HISTORY_KEY);
+    if (!raw) return [DEFAULT_TASK_HISTORY_ENTRY];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return [DEFAULT_TASK_HISTORY_ENTRY];
+    }
+    const valid = parsed.filter(
+      (item): item is LearningTaskHistoryEntry =>
+        item &&
+        typeof item === 'object' &&
+        typeof item.id === 'string' &&
+        typeof item.name === 'string' &&
+        typeof item.json === 'string' &&
+        typeof item.taskCount === 'number'
+    );
+    if (valid.length === 0) return [DEFAULT_TASK_HISTORY_ENTRY];
+    return valid;
+  } catch {
+    return [DEFAULT_TASK_HISTORY_ENTRY];
+  }
+}
+
+export function saveLearningTaskToHistory(
+  entry: LearningTaskHistoryEntry
+): LearningTaskHistoryEntry[] {
+  const current = loadLearningTaskHistory();
+  const normalizedTarget = entry.json.trim();
+  const filtered = current.filter((item) => item.json.trim() !== normalizedTarget);
+  const next = [entry, ...filtered].slice(0, MAX_TASK_HISTORY_ENTRIES);
+  try {
+    sessionStorage.setItem(LEARNING_TASK_HISTORY_KEY, JSON.stringify(next));
+  } catch (err) {
+    console.error('Failed to save learning task history:', err);
+  }
+  return next;
+}
+
+export function deleteLearningTaskFromHistory(id: string): LearningTaskHistoryEntry[] {
+  const current = loadLearningTaskHistory();
+  const filtered = current.filter((item) => item.id !== id);
+  const next = filtered.length > 0 ? filtered : [DEFAULT_TASK_HISTORY_ENTRY];
+  try {
+    sessionStorage.setItem(LEARNING_TASK_HISTORY_KEY, JSON.stringify(next));
+  } catch (err) {
+    console.error('Failed to update learning task history:', err);
+  }
+  return next;
+}
+
+
 
 
 

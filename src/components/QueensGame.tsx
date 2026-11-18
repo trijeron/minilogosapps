@@ -21,16 +21,23 @@ import {
   loadQueensBestTimes,
   saveQueensBestTime,
 } from '../utils/storage';
+import { GameTab } from './Header';
 
 interface QueensGameProps {
   realTimeCheck: boolean;
   onToggleRealTimeCheck: () => void;
   isMuted: boolean;
   onToggleSound: () => void;
+  onGameCompleted?: () => void;
+  onSelectGame?: (tab: GameTab) => void;
+  externalPaused?: boolean;
 }
 
 export const QueensGame: React.FC<QueensGameProps> = ({
   realTimeCheck,
+  onGameCompleted,
+  onSelectGame,
+  externalPaused = false,
 }) => {
   const [boardSize, setBoardSize] = useState<QueensBoardSize>(6);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
@@ -152,14 +159,33 @@ export const QueensGame: React.FC<QueensGameProps> = ({
 
   // Timer loop
   useEffect(() => {
-    if (isPaused || isCompleted || board.length === 0) return;
+    if (
+      isPaused ||
+      externalPaused ||
+      showRules ||
+      showResetConfirm ||
+      showNewGameConfirm ||
+      isCompleted ||
+      board.length === 0
+    ) {
+      return;
+    }
 
     const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isPaused, isCompleted, board.length]);
+  }, [
+    isPaused,
+    externalPaused,
+    showRules,
+    showResetConfirm,
+    showNewGameConfirm,
+    isCompleted,
+    board.length,
+  ]);
 
   // Conflicts calculation
   const rawConflicts = useMemo(() => {
@@ -302,9 +328,10 @@ export const QueensGame: React.FC<QueensGameProps> = ({
           setIsNewBest(false);
         }
         setShowVictory(true);
+        onGameCompleted?.();
       }
     },
-    [regions, solutionQueens, boardSize, bestTimes, difficulty, elapsedSeconds]
+    [regions, solutionQueens, boardSize, bestTimes, difficulty, elapsedSeconds, onGameCompleted]
   );
 
   // Requirement: "u quens na prvni klinuti dama na druhz krizek"
@@ -613,6 +640,9 @@ export const QueensGame: React.FC<QueensGameProps> = ({
           const nextSize: QueensBoardSize = boardSize === 6 ? 8 : 10;
           startNewGame(nextSize);
         }}
+        currentGame="queens"
+        gameLabel="LinkedIn Queens"
+        onSelectGame={onSelectGame}
       />
 
       {/* Reset Confirmation Modal */}
