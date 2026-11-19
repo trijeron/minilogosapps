@@ -1,5 +1,6 @@
 import React from 'react';
 import { Volume2, VolumeX, ShieldCheck, ShieldAlert, Grid, Sun, Moon, Crown, Spade, Layers, Route, Settings, HelpCircle } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type GameTab = 'sudoku' | 'tango' | 'queens' | 'minibridge' | 'mahjong' | 'zip';
 
@@ -44,6 +45,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global Action Tools */}
         <div className="flex items-center gap-1.5">
+          {/* Install as Mobile App (PWA) when supported */}
+          <PWAInstallButton variant="header" />
+
           {/* Real-time check toggle */}
           <button
             onClick={onToggleRealTimeCheck}

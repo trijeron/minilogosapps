@@ -23,6 +23,7 @@ import {
   parseLearningTasksJson,
 } from '../utils/learningTasks';
 import { formatTime } from '../utils/format';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -468,6 +469,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* Mobile App (PWA) Install Card */}
+        <PWAInstallButton variant="card" />
 
         {/* Offline HTML Download Card (moved from Header into Settings) */}
         <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between gap-3">

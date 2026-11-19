@@ -9,6 +9,7 @@ import { ZipGame } from './components/ZipGame';
 import { SettingsModal } from './components/SettingsModal';
 import { LearningGateModal } from './components/LearningGateModal';
 import { HelpModal } from './components/HelpModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import {
   LearningGateProgress,
   LearningGateSettings,
@@ -376,6 +377,8 @@ export default function App() {
         onComplete={handleCompleteGate}
         onClosePreview={() => setPreviewTasks(null)}
       />
+      {/* Offline status indicator for installed / offline PWA sessions */}
+      <OfflineIndicator />
     </div>
   );
 }
