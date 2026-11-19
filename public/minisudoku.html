@@ -562,25 +562,33 @@
       </label>
 
       <div class="flex flex-col gap-2">
-        <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200">
-          <label class="flex items-center gap-2 cursor-pointer flex-1">
-            <input id="set-by-games" type="checkbox" class="w-4 h-4 accent-indigo-600 rounded" />
+        <div class="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 bg-white">
+          <div class="flex items-center justify-between gap-2">
             <span class="text-xs sm:text-sm font-bold text-slate-900">Počet odehraných her</span>
-          </label>
-          <div class="flex items-center gap-1.5">
-            <input id="set-games-limit" type="number" min="1" max="99" value="3" class="w-16 px-2 py-1 rounded-lg border border-slate-300 text-sm font-bold text-center font-mono-num" />
-            <span class="text-xs text-slate-600">her</span>
+            <span id="set-games-badge" class="px-2.5 py-0.5 rounded-lg text-xs font-extrabold font-mono-num bg-indigo-100 text-indigo-800">3 hry</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-games-dec" type="button" class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700">−</button>
+            <input id="set-games-limit" type="range" min="0" max="10" step="1" value="3" class="flex-1 h-2.5 accent-indigo-600 cursor-pointer" />
+            <button id="btn-games-inc" type="button" class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700">+</button>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-slate-400 px-9">
+            <span>0 (Nikdy)</span><span>5</span><span>10 her</span>
           </div>
         </div>
 
-        <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200">
-          <label class="flex items-center gap-2 cursor-pointer flex-1">
-            <input id="set-by-minutes" type="checkbox" class="w-4 h-4 accent-indigo-600 rounded" />
+        <div class="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 bg-white">
+          <div class="flex items-center justify-between gap-2">
             <span class="text-xs sm:text-sm font-bold text-slate-900">Časový limit hraní</span>
-          </label>
-          <div class="flex items-center gap-1.5">
-            <input id="set-minutes-limit" type="number" min="1" max="240" value="10" class="w-16 px-2 py-1 rounded-lg border border-slate-300 text-sm font-bold text-center font-mono-num" />
-            <span class="text-xs text-slate-600">min</span>
+            <span id="set-minutes-badge" class="px-2.5 py-0.5 rounded-lg text-xs font-extrabold font-mono-num bg-slate-100 text-slate-500">Nikdy (0)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-minutes-dec" type="button" class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700">−</button>
+            <input id="set-minutes-limit" type="range" min="0" max="10" step="1" value="0" class="flex-1 h-2.5 accent-indigo-600 cursor-pointer" />
+            <button id="btn-minutes-inc" type="button" class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700">+</button>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-slate-400 px-9">
+            <span>0 (Nikdy)</span><span>5 min</span><span>10 min</span>
           </div>
         </div>
       </div>
@@ -4316,7 +4324,7 @@
       { type: 'choice', prompt: 'Co znamená anglické slovo „Sun“?', options: ['Měsíc', 'Hvězda', 'Mrak', 'Slunce'], correctIndex: 3 }
     ];
     let gateSettings = {
-      enabled: true, triggerByGames: true, gamesLimit: 3, triggerByMinutes: false, minutesLimit: 10,
+      enabled: true, triggerByGames: true, gamesLimit: 3, triggerByMinutes: false, minutesLimit: 0,
       tasksPerBreak: 1, customJson: JSON.stringify(DEFAULT_GATE_TASKS, null, 2)
     };
     let gateProgress = { gamesSinceLastGate: 0, secondsSinceLastGate: 0, gatePending: false, taskCursor: 0 };
@@ -4552,7 +4560,7 @@
     function recordGateGameCompleted() {
       if (!gateSettings.enabled) return;
       gateProgress.gamesSinceLastGate++;
-      if (gateSettings.triggerByGames && gateProgress.gamesSinceLastGate >= gateSettings.gamesLimit) {
+      if (gateSettings.triggerByGames && gateSettings.gamesLimit > 0 && gateProgress.gamesSinceLastGate >= gateSettings.gamesLimit) {
         gateProgress.gatePending = true;
         persistGate();
         setTimeout(() => {
@@ -4564,7 +4572,7 @@
     }
 
     setInterval(() => {
-      if (!gateSettings.enabled || !gateSettings.triggerByMinutes || gateRuntime.open) return;
+      if (!gateSettings.enabled || !gateSettings.triggerByMinutes || gateSettings.minutesLimit <= 0 || gateRuntime.open) return;
       if (!document.getElementById('settings-modal').classList.contains('hidden')) return;
       if (document.visibilityState === 'hidden') return;
       gateProgress.secondsSinceLastGate++;
@@ -4678,16 +4686,50 @@
       return res;
     }
 
+    function updateSliderBadges() {
+      const g = Math.max(0, Math.min(10, parseInt(document.getElementById('set-games-limit').value, 10) || 0));
+      const m = Math.max(0, Math.min(10, parseInt(document.getElementById('set-minutes-limit').value, 10) || 0));
+      const gb = document.getElementById('set-games-badge');
+      const mb = document.getElementById('set-minutes-badge');
+      gb.textContent = g === 0 ? 'Nikdy (0)' : (g === 1 ? '1 hra' : (g <= 4 ? `${g} hry` : `${g} her`));
+      gb.className = `px-2.5 py-0.5 rounded-lg text-xs font-extrabold font-mono-num ${g === 0 ? 'bg-slate-100 text-slate-500' : 'bg-indigo-100 text-indigo-800'}`;
+      mb.textContent = m === 0 ? 'Nikdy (0)' : `${m} min`;
+      mb.className = `px-2.5 py-0.5 rounded-lg text-xs font-extrabold font-mono-num ${m === 0 ? 'bg-slate-100 text-slate-500' : 'bg-indigo-100 text-indigo-800'}`;
+      document.getElementById('set-progress-label').textContent = `Odehráno: ${gateProgress.gamesSinceLastGate}${g > 0 ? '/' + g : ''} · ${formatTime(gateProgress.secondsSinceLastGate)}`;
+    }
+    document.getElementById('set-games-limit').addEventListener('input', updateSliderBadges);
+    document.getElementById('set-minutes-limit').addEventListener('input', updateSliderBadges);
+    document.getElementById('btn-games-dec').addEventListener('click', () => {
+      const el = document.getElementById('set-games-limit');
+      el.value = String(Math.max(0, (parseInt(el.value, 10) || 0) - 1));
+      updateSliderBadges();
+    });
+    document.getElementById('btn-games-inc').addEventListener('click', () => {
+      const el = document.getElementById('set-games-limit');
+      el.value = String(Math.min(10, (parseInt(el.value, 10) || 0) + 1));
+      updateSliderBadges();
+    });
+    document.getElementById('btn-minutes-dec').addEventListener('click', () => {
+      const el = document.getElementById('set-minutes-limit');
+      el.value = String(Math.max(0, (parseInt(el.value, 10) || 0) - 1));
+      updateSliderBadges();
+    });
+    document.getElementById('btn-minutes-inc').addEventListener('click', () => {
+      const el = document.getElementById('set-minutes-limit');
+      el.value = String(Math.min(10, (parseInt(el.value, 10) || 0) + 1));
+      updateSliderBadges();
+    });
+
     document.getElementById('btn-settings').addEventListener('click', () => {
       document.getElementById('set-gate-enabled').checked = gateSettings.enabled;
-      document.getElementById('set-by-games').checked = gateSettings.triggerByGames;
-      document.getElementById('set-games-limit').value = gateSettings.gamesLimit;
-      document.getElementById('set-by-minutes').checked = gateSettings.triggerByMinutes;
-      document.getElementById('set-minutes-limit').value = gateSettings.minutesLimit;
+      const gVal = gateSettings.triggerByGames ? Math.max(0, Math.min(10, gateSettings.gamesLimit || 0)) : 0;
+      const mVal = gateSettings.triggerByMinutes ? Math.max(0, Math.min(10, gateSettings.minutesLimit || 0)) : 0;
+      document.getElementById('set-games-limit').value = String(gVal);
+      document.getElementById('set-minutes-limit').value = String(mVal);
       document.getElementById('set-tasks-count').value = String(gateSettings.tasksPerBreak || 1);
       document.getElementById('set-json-input').value = gateSettings.customJson;
       document.getElementById('set-history-name').value = '';
-      document.getElementById('set-progress-label').textContent = `Odehráno: ${gateProgress.gamesSinceLastGate}/${gateSettings.gamesLimit} · ${formatTime(gateProgress.secondsSinceLastGate)}`;
+      updateSliderBadges();
       refreshSettingsJsonValidation();
       renderSettingsHistory();
       document.getElementById('settings-modal').classList.remove('hidden');
@@ -4709,7 +4751,7 @@
     document.getElementById('btn-set-reset-progress').addEventListener('click', () => {
       gateProgress.gamesSinceLastGate = 0; gateProgress.secondsSinceLastGate = 0; gateProgress.gatePending = false;
       persistGate();
-      document.getElementById('set-progress-label').textContent = `Odehráno: 0/${gateSettings.gamesLimit} · 00:00`;
+      updateSliderBadges();
     });
     document.getElementById('btn-set-preview').addEventListener('click', () => {
       const res = refreshSettingsJsonValidation();
@@ -4734,12 +4776,14 @@
     document.getElementById('btn-set-save').addEventListener('click', () => {
       const rawJson = document.getElementById('set-json-input').value;
       addGateHistoryEntry(rawJson, document.getElementById('set-history-name').value);
+      const gamesVal = Math.max(0, Math.min(10, parseInt(document.getElementById('set-games-limit').value, 10) || 0));
+      const minsVal = Math.max(0, Math.min(10, parseInt(document.getElementById('set-minutes-limit').value, 10) || 0));
       gateSettings = {
         enabled: document.getElementById('set-gate-enabled').checked,
-        triggerByGames: document.getElementById('set-by-games').checked,
-        gamesLimit: Math.max(1, Math.min(99, parseInt(document.getElementById('set-games-limit').value, 10) || 1)),
-        triggerByMinutes: document.getElementById('set-by-minutes').checked,
-        minutesLimit: Math.max(1, Math.min(240, parseInt(document.getElementById('set-minutes-limit').value, 10) || 1)),
+        triggerByGames: gamesVal > 0,
+        gamesLimit: gamesVal,
+        triggerByMinutes: minsVal > 0,
+        minutesLimit: minsVal,
         tasksPerBreak: Math.max(1, Math.min(5, parseInt(document.getElementById('set-tasks-count').value, 10) || 1)),
         customJson: rawJson
       };

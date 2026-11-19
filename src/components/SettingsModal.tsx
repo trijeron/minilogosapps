@@ -11,6 +11,8 @@ import {
   Trash2,
   Download,
   BookmarkPlus,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import {
   LearningGateProgress,
@@ -69,17 +71,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   if (!isOpen) return null;
 
   const canSave = !draft.enabled || jsonValidation.ok;
+  const effectiveGamesLimit = Math.max(0, Math.min(10, Math.round(Number(draft.gamesLimit) || 0)));
+  const effectiveMinutesLimit = Math.max(0, Math.min(10, Math.round(Number(draft.minutesLimit) || 0)));
   const noTriggerSelected =
-    draft.enabled && !draft.triggerByGames && !draft.triggerByMinutes;
+    draft.enabled && effectiveGamesLimit === 0 && effectiveMinutesLimit === 0;
   const normalizedDraftJson = draft.customJson.trim();
+
+  const formatGamesBadge = (count: number) => {
+    if (count === 0) return 'Nikdy (0)';
+    if (count === 1) return '1 hra';
+    if (count >= 2 && count <= 4) return `${count} hry`;
+    return `${count} her`;
+  };
+
+  const formatMinutesBadge = (mins: number) => {
+    if (mins === 0) return 'Nikdy (0)';
+    return `${mins} min`;
+  };
+
+  const setGamesLimitValue = (val: number) => {
+    const clamped = Math.max(0, Math.min(10, Math.round(val)));
+    setDraft((prev) => ({
+      ...prev,
+      gamesLimit: clamped,
+      triggerByGames: clamped > 0,
+    }));
+  };
+
+  const setMinutesLimitValue = (val: number) => {
+    const clamped = Math.max(0, Math.min(10, Math.round(val)));
+    setDraft((prev) => ({
+      ...prev,
+      minutesLimit: clamped,
+      triggerByMinutes: clamped > 0,
+    }));
+  };
 
   const handleSaveClick = () => {
     if (!canSave) return;
     onSave(
       {
         ...draft,
-        gamesLimit: Math.max(1, Math.min(99, Number(draft.gamesLimit) || 1)),
-        minutesLimit: Math.max(1, Math.min(240, Number(draft.minutesLimit) || 1)),
+        triggerByGames: effectiveGamesLimit > 0,
+        gamesLimit: effectiveGamesLimit,
+        triggerByMinutes: effectiveMinutesLimit > 0,
+        minutesLimit: effectiveMinutesLimit,
         tasksPerBreak: Math.max(1, Math.min(5, Number(draft.tasksPerBreak) || 1)),
       },
       setName.trim() || undefined
@@ -135,106 +171,141 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
         </label>
 
-        {/* Triggers: Games count & Minutes */}
+        {/* Triggers: Touch-friendly Sliders (0–10, 0 = never) */}
         <div className="flex flex-col gap-2.5">
-          <p className="text-xs font-extrabold text-slate-700">
-            Kdy se má okno zobrazit
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-extrabold text-slate-700">
+              Kdy se má okno zobrazit
+            </p>
+            <span className="text-[11px] text-slate-500">0 = nikdy</span>
+          </div>
 
-          {/* Games limit */}
-          <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-white">
-            <label className="flex items-center gap-2.5 cursor-pointer flex-1">
-              <input
-                type="checkbox"
-                checked={draft.triggerByGames}
-                onChange={(e) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    triggerByGames: e.target.checked,
-                  }))
-                }
-                className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
-              />
+          {/* Games limit slider (0–10) */}
+          <div className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between gap-2">
               <div>
                 <span className="text-xs sm:text-sm font-bold text-slate-900">
                   Počet odehraných her
                 </span>
                 <p className="text-[11px] text-slate-500">
-                  Zobrazí se po dokončení zvoleného počtu her
+                  {effectiveGamesLimit === 0
+                    ? 'Vypnuto — po dokončení her se okno neotevře'
+                    : `Otevře se po každých ${formatGamesBadge(effectiveGamesLimit)}`}
                 </p>
               </div>
-            </label>
-            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={`px-2.5 py-1 rounded-lg text-xs font-extrabold tabular-nums shrink-0 ${
+                  effectiveGamesLimit === 0
+                    ? 'bg-slate-100 text-slate-500'
+                    : 'bg-indigo-100 text-indigo-800'
+                }`}
+              >
+                {formatGamesBadge(effectiveGamesLimit)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setGamesLimitValue(effectiveGamesLimit - 1)}
+                disabled={effectiveGamesLimit <= 0}
+                aria-label="Snížit počet her"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
               <input
-                type="number"
-                min={1}
-                max={99}
-                disabled={!draft.triggerByGames}
-                value={draft.gamesLimit}
-                onChange={(e) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    gamesLimit: Math.max(
-                      1,
-                      Math.min(99, parseInt(e.target.value, 10) || 1)
-                    ),
-                  }))
-                }
-                className="w-16 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-bold text-center tabular-nums disabled:opacity-45"
+                type="range"
+                min={0}
+                max={10}
+                step={1}
+                value={effectiveGamesLimit}
+                onChange={(e) => setGamesLimitValue(Number(e.target.value))}
+                aria-label="Limit počtu her (0 až 10)"
+                className="flex-1 h-2.5 accent-indigo-600 cursor-pointer touch-pan-x"
               />
-              <span className="text-xs text-slate-600 font-medium">her</span>
+              <button
+                type="button"
+                onClick={() => setGamesLimitValue(effectiveGamesLimit + 1)}
+                disabled={effectiveGamesLimit >= 10}
+                aria-label="Zvýšit počet her"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-10">
+              <span>0 (Nikdy)</span>
+              <span>5</span>
+              <span>10 her</span>
             </div>
           </div>
 
-          {/* Minutes limit */}
-          <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-white">
-            <label className="flex items-center gap-2.5 cursor-pointer flex-1">
-              <input
-                type="checkbox"
-                checked={draft.triggerByMinutes}
-                onChange={(e) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    triggerByMinutes: e.target.checked,
-                  }))
-                }
-                className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
-              />
+          {/* Minutes limit slider (0–10) */}
+          <div className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between gap-2">
               <div>
                 <span className="text-xs sm:text-sm font-bold text-slate-900">
                   Časový limit hraní
                 </span>
                 <p className="text-[11px] text-slate-500">
-                  Zobrazí se po uplynutí nastavených minut hraní
+                  {effectiveMinutesLimit === 0
+                    ? 'Vypnuto — časový limit je neaktivní'
+                    : `Otevře se každých ${effectiveMinutesLimit} min hraní`}
                 </p>
               </div>
-            </label>
-            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={`px-2.5 py-1 rounded-lg text-xs font-extrabold tabular-nums shrink-0 ${
+                  effectiveMinutesLimit === 0
+                    ? 'bg-slate-100 text-slate-500'
+                    : 'bg-indigo-100 text-indigo-800'
+                }`}
+              >
+                {formatMinutesBadge(effectiveMinutesLimit)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setMinutesLimitValue(effectiveMinutesLimit - 1)}
+                disabled={effectiveMinutesLimit <= 0}
+                aria-label="Snížit časový limit"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
               <input
-                type="number"
-                min={1}
-                max={240}
-                disabled={!draft.triggerByMinutes}
-                value={draft.minutesLimit}
-                onChange={(e) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    minutesLimit: Math.max(
-                      1,
-                      Math.min(240, parseInt(e.target.value, 10) || 1)
-                    ),
-                  }))
-                }
-                className="w-16 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-bold text-center tabular-nums disabled:opacity-45"
+                type="range"
+                min={0}
+                max={10}
+                step={1}
+                value={effectiveMinutesLimit}
+                onChange={(e) => setMinutesLimitValue(Number(e.target.value))}
+                aria-label="Časový limit v minutách (0 až 10)"
+                className="flex-1 h-2.5 accent-indigo-600 cursor-pointer touch-pan-x"
               />
-              <span className="text-xs text-slate-600 font-medium">min</span>
+              <button
+                type="button"
+                onClick={() => setMinutesLimitValue(effectiveMinutesLimit + 1)}
+                disabled={effectiveMinutesLimit >= 10}
+                aria-label="Zvýšit časový limit"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-10">
+              <span>0 (Nikdy)</span>
+              <span>5 min</span>
+              <span>10 min</span>
             </div>
           </div>
 
           {noTriggerSelected && (
             <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              Zaškrtněte alespoň jeden limit (počet her nebo minut), aby se
-              přestávka spouštěla.
+              Oba posuvníky jsou na 0 (Nikdy) — nastavte alespoň 1 hru nebo 1
+              minutu, aby se přestávka spouštěla.
             </p>
           )}
         </div>
@@ -271,12 +342,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <strong className="text-slate-800">
                 {progress.gamesSinceLastGate}
               </strong>
-              /{draft.gamesLimit}
+              {effectiveGamesLimit > 0 ? `/${effectiveGamesLimit}` : ''}
               {' · '}
               Čas:{' '}
               <strong className="text-slate-800">
                 {formatTime(progress.secondsSinceLastGate)}
               </strong>
+              {effectiveMinutesLimit > 0 ? `/${effectiveMinutesLimit}:00` : ''}
             </span>
             <button
               type="button"

@@ -105,7 +105,7 @@ export const DEFAULT_LEARNING_GATE_SETTINGS: LearningGateSettings = {
   triggerByGames: true,
   gamesLimit: 3,
   triggerByMinutes: false,
-  minutesLimit: 10,
+  minutesLimit: 0,
   tasksPerBreak: 1,
   customJson: DEFAULT_ENGLISH_TASKS_JSON,
 };

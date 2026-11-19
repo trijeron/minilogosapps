@@ -19,7 +19,9 @@ import {
 } from '../src/utils/learningTasks';
 import {
   deleteLearningTaskFromHistory,
+  loadLearningGateSettings,
   loadLearningTaskHistory,
+  saveLearningGateSettings,
   saveLearningTaskToHistory,
 } from '../src/utils/storage';
 
@@ -163,6 +165,51 @@ test('task history builder and sessionStorage persistence allow saving, selectin
     const afterDelete = deleteLearningTaskFromHistory(entry.id);
     assert.equal(afterDelete.length, 1);
     assert.equal(afterDelete[0].id, DEFAULT_TASK_HISTORY_ENTRY.id);
+  } finally {
+    delete (globalThis as Record<string, unknown>).sessionStorage;
+  }
+});
+
+test('learning gate settings normalize 0-10 slider limits where 0 means never', () => {
+  const store = new Map<string, string>();
+  const mockSessionStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      store.set(k, v);
+    },
+    removeItem: (k: string) => {
+      store.delete(k);
+    },
+  };
+  (globalThis as Record<string, unknown>).sessionStorage = mockSessionStorage;
+
+  try {
+    saveLearningGateSettings({
+      ...DEFAULT_LEARNING_GATE_SETTINGS,
+      gamesLimit: 0,
+      triggerByGames: false,
+      minutesLimit: 7,
+      triggerByMinutes: true,
+    });
+    const loaded = loadLearningGateSettings();
+    assert.equal(loaded.gamesLimit, 0);
+    assert.equal(loaded.triggerByGames, false);
+    assert.equal(loaded.minutesLimit, 7);
+    assert.equal(loaded.triggerByMinutes, true);
+
+    // Out-of-range values are clamped to 0..10
+    saveLearningGateSettings({
+      ...DEFAULT_LEARNING_GATE_SETTINGS,
+      gamesLimit: 25,
+      triggerByGames: true,
+      minutesLimit: -3,
+      triggerByMinutes: true,
+    });
+    const clamped = loadLearningGateSettings();
+    assert.equal(clamped.gamesLimit, 10);
+    assert.equal(clamped.triggerByGames, true);
+    assert.equal(clamped.minutesLimit, 0);
+    assert.equal(clamped.triggerByMinutes, false);
   } finally {
     delete (globalThis as Record<string, unknown>).sessionStorage;
   }

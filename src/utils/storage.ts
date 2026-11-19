@@ -467,24 +467,27 @@ export function loadLearningGateSettings(): LearningGateSettings {
     const raw = sessionStorage.getItem(LEARNING_SETTINGS_KEY);
     if (!raw) return DEFAULT_LEARNING_GATE_SETTINGS;
     const parsed = JSON.parse(raw);
+
+    const rawGamesLimit =
+      parsed.triggerByGames === false
+        ? 0
+        : typeof parsed.gamesLimit === 'number' && !Number.isNaN(parsed.gamesLimit)
+          ? Math.max(0, Math.min(10, Math.floor(parsed.gamesLimit)))
+          : DEFAULT_LEARNING_GATE_SETTINGS.gamesLimit;
+
+    const rawMinutesLimit =
+      parsed.triggerByMinutes === false
+        ? 0
+        : typeof parsed.minutesLimit === 'number' && !Number.isNaN(parsed.minutesLimit)
+          ? Math.max(0, Math.min(10, Math.floor(parsed.minutesLimit)))
+          : DEFAULT_LEARNING_GATE_SETTINGS.minutesLimit;
+
     return {
       enabled: typeof parsed.enabled === 'boolean' ? parsed.enabled : DEFAULT_LEARNING_GATE_SETTINGS.enabled,
-      triggerByGames:
-        typeof parsed.triggerByGames === 'boolean'
-          ? parsed.triggerByGames
-          : DEFAULT_LEARNING_GATE_SETTINGS.triggerByGames,
-      gamesLimit:
-        typeof parsed.gamesLimit === 'number' && parsed.gamesLimit >= 1 && parsed.gamesLimit <= 99
-          ? Math.floor(parsed.gamesLimit)
-          : DEFAULT_LEARNING_GATE_SETTINGS.gamesLimit,
-      triggerByMinutes:
-        typeof parsed.triggerByMinutes === 'boolean'
-          ? parsed.triggerByMinutes
-          : DEFAULT_LEARNING_GATE_SETTINGS.triggerByMinutes,
-      minutesLimit:
-        typeof parsed.minutesLimit === 'number' && parsed.minutesLimit >= 1 && parsed.minutesLimit <= 240
-          ? Math.floor(parsed.minutesLimit)
-          : DEFAULT_LEARNING_GATE_SETTINGS.minutesLimit,
+      triggerByGames: rawGamesLimit > 0,
+      gamesLimit: rawGamesLimit,
+      triggerByMinutes: rawMinutesLimit > 0,
+      minutesLimit: rawMinutesLimit,
       tasksPerBreak:
         typeof parsed.tasksPerBreak === 'number' && parsed.tasksPerBreak >= 1 && parsed.tasksPerBreak <= 5
           ? Math.floor(parsed.tasksPerBreak)

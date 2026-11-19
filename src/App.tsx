@@ -101,6 +101,7 @@ export default function App() {
     if (
       !gateSettings.enabled ||
       !gateSettings.triggerByMinutes ||
+      gateSettings.minutesLimit <= 0 ||
       isGateOpen ||
       isSettingsOpen ||
       isHelpOpen ||
@@ -148,7 +149,9 @@ export default function App() {
     setGateProgress((prev) => {
       const nextGames = prev.gamesSinceLastGate + 1;
       const reachedGamesLimit =
-        gateSettings.triggerByGames && nextGames >= gateSettings.gamesLimit;
+        gateSettings.triggerByGames &&
+        gateSettings.gamesLimit > 0 &&
+        nextGames >= gateSettings.gamesLimit;
 
       if (reachedGamesLimit) {
         setGateTriggerReason('games');
