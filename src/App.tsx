@@ -18,8 +18,8 @@ import {
 } from './types/learningGate';
 import {
   buildTaskHistoryEntry,
+  drawTasksForBreak,
   getActiveLearningTasks,
-  selectTasksForBreak,
 } from './utils/learningTasks';
 import {
   deleteLearningTaskFromHistory,
@@ -76,8 +76,13 @@ export default function App() {
   });
   const [gateTriggerReason, setGateTriggerReason] = useState<'games' | 'minutes' | 'preview'>('games');
   const [previewTasks, setPreviewTasks] = useState<LearningTask[] | null>(null);
+  const [activeBreakTasks, setActiveBreakTasks] = useState<LearningTask[]>([]);
 
   const gateOpenDelayRef = useRef<number | null>(null);
+  const nextDeckAfterBreakRef = useRef<{
+    nextCursor: number;
+    nextRemainingOrder: number[];
+  } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -180,22 +185,53 @@ export default function App() {
 
   const activeTaskBank = useMemo(() => getActiveLearningTasks(gateSettings), [gateSettings]);
 
-  const currentBreakTasks = useMemo(() => {
-    if (previewTasks) return previewTasks;
-    return selectTasksForBreak(activeTaskBank, gateProgress.taskCursor, gateSettings.tasksPerBreak);
-  }, [previewTasks, activeTaskBank, gateProgress.taskCursor, gateSettings.tasksPerBreak]);
+  // Freeze drawn questions whenever the learning gate opens so re-renders never re-shuffle mid-break
+  useEffect(() => {
+    if (!isGateOpen) {
+      setActiveBreakTasks([]);
+      return;
+    }
+    setActiveBreakTasks((prev) => {
+      if (prev.length > 0) return prev;
+      const drawn = drawTasksForBreak(activeTaskBank, gateSettings.tasksPerBreak, {
+        randomOrder: gateSettings.randomOrder,
+        taskCursor: gateProgress.taskCursor,
+        remainingOrder: gateProgress.remainingOrder,
+      });
+      nextDeckAfterBreakRef.current = {
+        nextCursor: drawn.nextCursor,
+        nextRemainingOrder: drawn.nextRemainingOrder,
+      };
+      return drawn.tasks;
+    });
+  }, [
+    isGateOpen,
+    activeTaskBank,
+    gateSettings.tasksPerBreak,
+    gateSettings.randomOrder,
+    gateProgress.taskCursor,
+    gateProgress.remainingOrder,
+  ]);
+
+  const currentBreakTasks = previewTasks ?? activeBreakTasks;
 
   const handleCompleteGate = () => {
     if (previewTasks) {
       setPreviewTasks(null);
       return;
     }
+    const nextDeck = nextDeckAfterBreakRef.current;
+    nextDeckAfterBreakRef.current = null;
     setIsGateOpen(false);
+    setActiveBreakTasks([]);
     setGateProgress((prev) => ({
       gamesSinceLastGate: 0,
       secondsSinceLastGate: 0,
       gatePending: false,
-      taskCursor: (prev.taskCursor + gateSettings.tasksPerBreak) % Math.max(1, activeTaskBank.length),
+      taskCursor:
+        nextDeck?.nextCursor ??
+        (prev.taskCursor + gateSettings.tasksPerBreak) % Math.max(1, activeTaskBank.length),
+      remainingOrder: nextDeck?.nextRemainingOrder ?? prev.remainingOrder ?? [],
     }));
   };
 
@@ -210,6 +246,7 @@ export default function App() {
   }, []);
 
   const handleSaveSettings = (next: LearningGateSettings, setName?: string) => {
+    const jsonChanged = next.customJson.trim() !== gateSettings.customJson.trim();
     setGateSettings(next);
     const entry = buildTaskHistoryEntry(next.customJson, setName);
     if (entry) {
@@ -220,8 +257,16 @@ export default function App() {
         setTaskHistory(saveLearningTaskToHistory(entry));
       }
     }
+    if (jsonChanged) {
+      setGateProgress((prev) => ({
+        ...prev,
+        taskCursor: 0,
+        remainingOrder: [],
+      }));
+    }
     if (!next.enabled) {
       setIsGateOpen(false);
+      setActiveBreakTasks([]);
       setGateProgress((prev) => ({ ...prev, gatePending: false }));
     }
   };
@@ -354,11 +399,14 @@ export default function App() {
         onSaveToHistory={handleSaveTaskToHistory}
         onDeleteHistory={handleDeleteTaskHistory}
         onResetProgress={handleResetGateProgress}
-        onPreviewTasks={(tasks, count) => {
+        onPreviewTasks={(tasks, count, randomOrder) => {
           setGateTriggerReason('preview');
-          setPreviewTasks(
-            selectTasksForBreak(tasks, gateProgress.taskCursor, count)
-          );
+          const drawn = drawTasksForBreak(tasks, count, {
+            randomOrder,
+            taskCursor: gateProgress.taskCursor,
+            remainingOrder: gateProgress.remainingOrder,
+          });
+          setPreviewTasks(drawn.tasks);
         }}
         onClose={() => setIsSettingsOpen(false)}
       />

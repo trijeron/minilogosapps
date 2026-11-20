@@ -10,12 +10,18 @@ import {
   DEFAULT_ENGLISH_TASKS_JSON,
   DEFAULT_LEARNING_GATE_SETTINGS,
   DEFAULT_TASK_HISTORY_ENTRY,
+  drawTasksForBreak,
+  extractSetNameFromFilename,
+  extractSetNameFromJsonOrSource,
   getActiveLearningTasks,
   isFillAnswerCorrect,
   normalizeAnswerText,
   parseLearningTasksJson,
+  parseRemoteTasksOrCatalog,
+  resolveRelativeUrl,
   selectTasksForBreak,
   summarizeTaskTypes,
+  validateTaskSourceUrl,
 } from '../src/utils/learningTasks';
 import {
   deleteLearningTaskFromHistory,
@@ -213,6 +219,123 @@ test('learning gate settings normalize 0-10 slider limits where 0 means never', 
   } finally {
     delete (globalThis as Record<string, unknown>).sessionStorage;
   }
+});
+
+test('file/URL/catalog JSON task import helpers validate URLs, extract names, and parse web catalogs', () => {
+  assert.equal(extractSetNameFromFilename('lekce_4-anglictina.json'), 'lekce_4-anglictina');
+  assert.equal(extractSetNameFromFilename('https://ithonza.cz/games/tasks/Slov%C3%AD%C4%8Dka.json?v=1'), 'Slovíčka');
+
+  assert.equal(
+    extractSetNameFromJsonOrSource(
+      JSON.stringify({ name: 'Lekce 5', tasks: [{ type: 'fill', prompt: 'Kočka', answer: 'cat' }] }),
+      'fallback.json'
+    ),
+    'Lekce 5'
+  );
+  assert.equal(
+    extractSetNameFromJsonOrSource(
+      JSON.stringify([{ type: 'fill', prompt: 'Kočka', answer: 'cat' }]),
+      'domaci_ukol.json'
+    ),
+    'domaci_ukol'
+  );
+
+  assert.deepEqual(validateTaskSourceUrl('https://ithonza.cz/games/ukoly.json'), {
+    ok: true,
+    url: 'https://ithonza.cz/games/ukoly.json',
+  });
+  assert.deepEqual(validateTaskSourceUrl('./tasks/lekce1.json'), {
+    ok: true,
+    url: './tasks/lekce1.json',
+  });
+  assert.deepEqual(validateTaskSourceUrl('ithonza.cz/games/ukoly.json'), {
+    ok: true,
+    url: 'https://ithonza.cz/games/ukoly.json',
+  });
+  assert.equal(validateTaskSourceUrl('javascript:alert(1)').ok, false);
+  assert.equal(validateTaskSourceUrl('   ').ok, false);
+
+  assert.equal(
+    resolveRelativeUrl('./lekce1.json', 'https://ithonza.cz/games/tasks/index.json'),
+    'https://ithonza.cz/games/tasks/lekce1.json'
+  );
+
+  const singleRes = parseRemoteTasksOrCatalog(
+    JSON.stringify({
+      name: 'Barvy EN',
+      tasks: [{ type: 'choice', prompt: 'Modrá', options: ['Red', 'Blue'], correctIndex: 1 }],
+    }),
+    'https://ithonza.cz/games/colors.json'
+  );
+  assert.equal(singleRes.kind, 'tasks');
+  if (singleRes.kind === 'tasks') {
+    assert.equal(singleRes.name, 'Barvy EN');
+    assert.equal(singleRes.tasks.length, 1);
+  }
+
+  const catalogRes = parseRemoteTasksOrCatalog(
+    JSON.stringify({
+      sets: [
+        { name: 'Lekce 1', url: './lekce1.json' },
+        {
+          name: 'Lekce 2 (inline)',
+          tasks: [{ type: 'fill', prompt: 'Pes', answer: 'dog' }],
+        },
+      ],
+    }),
+    'https://ithonza.cz/games/tasks/index.json'
+  );
+  assert.equal(catalogRes.kind, 'catalog');
+  if (catalogRes.kind === 'catalog') {
+    assert.equal(catalogRes.items.length, 2);
+    assert.equal(catalogRes.items[0].url, 'https://ithonza.cz/games/tasks/lekce1.json');
+    assert.equal(catalogRes.items[1].taskCount, 1);
+    assert.ok(catalogRes.items[1].inlineJson);
+  }
+});
+
+test('drawTasksForBreak supports random shuffle-bag rotation without repeats and 1-10 questions per break', () => {
+  const bank = DEFAULT_ENGLISH_TASKS.slice(0, 6);
+  // Deterministic pseudo-random generator
+  let seed = 42;
+  const rng = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+
+  // Draw 3 + 3 across two consecutive breaks -> should cover all 6 unique questions exactly once
+  const break1 = drawTasksForBreak(bank, 3, { randomOrder: true, remainingOrder: [], rng });
+  assert.equal(break1.tasks.length, 3);
+  assert.equal(break1.nextRemainingOrder.length, 3);
+
+  const break2 = drawTasksForBreak(bank, 3, {
+    randomOrder: true,
+    remainingOrder: break1.nextRemainingOrder,
+    rng,
+  });
+  assert.equal(break2.tasks.length, 3);
+  assert.equal(break2.nextRemainingOrder.length, 0);
+
+  const allSeenPrompts = new Set([...break1.tasks, ...break2.tasks].map((t) => t.prompt));
+  assert.equal(allSeenPrompts.size, 6, 'Every question must appear once before repeating');
+
+  // Drawing up to 10 questions works cleanly and never repeats immediately back-to-back across refill
+  const break10 = drawTasksForBreak(bank, 10, { randomOrder: true, remainingOrder: [], rng });
+  assert.equal(break10.tasks.length, 10);
+  for (let i = 1; i < break10.tasks.length; i++) {
+    assert.notEqual(
+      break10.tasks[i].prompt,
+      break10.tasks[i - 1].prompt,
+      'Same question must not appear back-to-back'
+    );
+  }
+
+  // Sequential mode preserves order and advances cursor
+  const seq1 = drawTasksForBreak(bank, 4, { randomOrder: false, taskCursor: 1 });
+  assert.equal(seq1.tasks.length, 4);
+  assert.equal(seq1.tasks[0], bank[1]);
+  assert.equal(seq1.tasks[3], bank[4]);
+  assert.equal(seq1.nextCursor, 5);
 });
 
 test('standalone public/minisudoku.html compiles cleanly, uses sessionStorage, and validates all 3 types', () => {

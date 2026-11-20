@@ -593,16 +593,31 @@
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 px-1">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-slate-700">Úkolů najednou:</span>
-          <select id="set-tasks-count" class="px-2 py-1 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-          </select>
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 bg-white">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs sm:text-sm font-bold text-slate-900">Počet otázek pro pokračování</span>
+            <span id="set-tasks-badge" class="px-2.5 py-0.5 rounded-lg text-xs font-extrabold font-mono-num bg-indigo-100 text-indigo-800">1 otázka</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-tasks-dec" type="button" class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700">−</button>
+            <input id="set-tasks-count" type="range" min="1" max="10" step="1" value="1" class="flex-1 h-2.5 accent-indigo-600 cursor-pointer" />
+            <button id="btn-tasks-inc" type="button" class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700">+</button>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-slate-400 px-9">
+            <span>1 otázka</span><span>5</span><span>10 otázek</span>
+          </div>
         </div>
-        <div class="flex items-center gap-2 font-mono-num">
+
+        <label class="flex items-center justify-between gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
+          <div>
+            <p class="text-xs sm:text-sm font-bold text-slate-900">Náhodné střídání otázek</p>
+            <p class="text-[11px] text-slate-500">Losuje otázky náhodně bez opakování, dokud se neprostřídají všechny</p>
+          </div>
+          <input id="set-random-order" type="checkbox" checked class="w-5 h-5 accent-indigo-600 rounded cursor-pointer shrink-0" />
+        </label>
+
+        <div class="flex items-center justify-end gap-2 font-mono-num text-xs text-slate-600 px-1">
           <span id="set-progress-label">Odehráno: 0/3 · 00:00</span>
           <button id="btn-set-reset-progress" type="button" class="px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-sans font-semibold">Vynulovat</button>
         </div>
@@ -615,6 +630,26 @@
           <span class="text-[11px] text-slate-500">sessionStorage</span>
         </div>
         <div id="set-history-list" class="flex flex-col gap-1.5 max-h-32 overflow-y-auto"></div>
+      </div>
+
+      <!-- Import JSON from Phone (File / Folder) or Web URL -->
+      <div class="flex flex-col gap-2 p-3 rounded-2xl bg-indigo-50/60 border border-indigo-200">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-extrabold text-indigo-950">Načíst úkoly z telefonu nebo z webu</span>
+          <span class="text-[10px] font-semibold text-indigo-700">.json</span>
+        </div>
+        <input id="set-file-input" type="file" accept=".json,application/json,.txt,text/plain" multiple class="hidden" />
+        <input id="set-folder-input" type="file" webkitdirectory directory multiple class="hidden" />
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-set-import-file" type="button" class="px-3 py-2 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-900 text-xs font-bold">Soubor(y) JSON</button>
+          <button id="btn-set-import-folder" type="button" class="px-3 py-2 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-900 text-xs font-bold">Složka v telefonu</button>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <input id="set-web-url" type="url" placeholder="https://ithonza.cz/games/ukoly.json nebo ./ukoly.json" class="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900" />
+          <button id="btn-set-import-url" type="button" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shrink-0">Načíst</button>
+        </div>
+        <div id="set-web-catalog" class="hidden flex-col gap-1 pt-1 border-t border-indigo-200"></div>
+        <div id="set-import-feedback" class="hidden px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold"></div>
       </div>
 
       <div class="flex flex-col gap-1.5">
@@ -4325,9 +4360,9 @@
     ];
     let gateSettings = {
       enabled: true, triggerByGames: true, gamesLimit: 3, triggerByMinutes: false, minutesLimit: 0,
-      tasksPerBreak: 1, customJson: JSON.stringify(DEFAULT_GATE_TASKS, null, 2)
+      tasksPerBreak: 1, randomOrder: true, customJson: JSON.stringify(DEFAULT_GATE_TASKS, null, 2)
     };
-    let gateProgress = { gamesSinceLastGate: 0, secondsSinceLastGate: 0, gatePending: false, taskCursor: 0 };
+    let gateProgress = { gamesSinceLastGate: 0, secondsSinceLastGate: 0, gatePending: false, taskCursor: 0, remainingOrder: [] };
     try {
       if (typeof sessionStorage !== 'undefined') {
         const sRaw = sessionStorage.getItem('learning_gate_settings_v1');
@@ -4543,16 +4578,51 @@
       }
     }
 
-    function openLearningGate(reason, customTasks = null) {
+    function drawGateTasksHtml(bank, count, randomOrder) {
+      const safeCount = Math.max(1, Math.min(10, parseInt(count, 10) || 1));
+      if (!randomOrder) {
+        const picked = [];
+        for (let i = 0; i < safeCount; i++) picked.push(bank[(gateProgress.taskCursor + i) % bank.length]);
+        return { tasks: picked, nextCursor: (gateProgress.taskCursor + safeCount) % bank.length, nextDeck: [] };
+      }
+      const seen = new Set();
+      const deck = Array.isArray(gateProgress.remainingOrder)
+        ? gateProgress.remainingOrder.filter(idx => Number.isInteger(idx) && idx >= 0 && idx < bank.length && !seen.has(idx) && seen.add(idx))
+        : [];
+      const picked = [];
+      let lastIdx = null;
+      for (let i = 0; i < safeCount; i++) {
+        if (deck.length === 0) {
+          const fresh = bank.map((_, idx) => idx);
+          for (let k = fresh.length - 1; k > 0; k--) {
+            const j = Math.floor(Math.random() * (k + 1));
+            [fresh[k], fresh[j]] = [fresh[j], fresh[k]];
+          }
+          if (fresh.length > 1 && lastIdx !== null && fresh[0] === lastIdx) {
+            const swapIdx = 1 + Math.floor(Math.random() * (fresh.length - 1));
+            [fresh[0], fresh[swapIdx]] = [fresh[swapIdx], fresh[0]];
+          }
+          deck.push(...fresh);
+        }
+        const nextIdx = deck.shift();
+        lastIdx = nextIdx;
+        picked.push(bank[nextIdx]);
+      }
+      return { tasks: picked, nextCursor: gateProgress.taskCursor, nextDeck: deck };
+    }
+
+    function openLearningGate(reason, customTasks = null, previewCount = null, previewRandom = null) {
       const parsed = parseGateTasksJson(gateSettings.customJson);
       const bank = customTasks || (parsed.ok ? parsed.tasks : DEFAULT_GATE_TASKS);
-      const count = Math.max(1, Math.min(5, gateSettings.tasksPerBreak || 1));
-      const picked = [];
-      for (let i = 0; i < count; i++) picked.push(bank[(gateProgress.taskCursor + i) % bank.length]);
+      const count = previewCount !== null ? previewCount : (gateSettings.tasksPerBreak || 1);
+      const useRandom = previewRandom !== null ? previewRandom : (gateSettings.randomOrder !== false);
+      const drawn = drawGateTasksHtml(bank, count, useRandom);
       gateRuntime.open = true;
       gateRuntime.isPreview = reason === 'preview';
       gateRuntime.reason = reason;
-      gateRuntime.tasks = picked;
+      gateRuntime.tasks = drawn.tasks;
+      gateRuntime.nextCursor = drawn.nextCursor;
+      gateRuntime.nextDeck = drawn.nextDeck;
       prepareGateTaskState(0);
       renderLearningGate();
     }
@@ -4689,16 +4759,20 @@
     function updateSliderBadges() {
       const g = Math.max(0, Math.min(10, parseInt(document.getElementById('set-games-limit').value, 10) || 0));
       const m = Math.max(0, Math.min(10, parseInt(document.getElementById('set-minutes-limit').value, 10) || 0));
+      const t = Math.max(1, Math.min(10, parseInt(document.getElementById('set-tasks-count').value, 10) || 1));
       const gb = document.getElementById('set-games-badge');
       const mb = document.getElementById('set-minutes-badge');
+      const tb = document.getElementById('set-tasks-badge');
       gb.textContent = g === 0 ? 'Nikdy (0)' : (g === 1 ? '1 hra' : (g <= 4 ? `${g} hry` : `${g} her`));
       gb.className = `px-2.5 py-0.5 rounded-lg text-xs font-extrabold font-mono-num ${g === 0 ? 'bg-slate-100 text-slate-500' : 'bg-indigo-100 text-indigo-800'}`;
       mb.textContent = m === 0 ? 'Nikdy (0)' : `${m} min`;
       mb.className = `px-2.5 py-0.5 rounded-lg text-xs font-extrabold font-mono-num ${m === 0 ? 'bg-slate-100 text-slate-500' : 'bg-indigo-100 text-indigo-800'}`;
+      tb.textContent = t === 1 ? '1 otázka' : (t <= 4 ? `${t} otázky` : `${t} otázek`);
       document.getElementById('set-progress-label').textContent = `Odehráno: ${gateProgress.gamesSinceLastGate}${g > 0 ? '/' + g : ''} · ${formatTime(gateProgress.secondsSinceLastGate)}`;
     }
     document.getElementById('set-games-limit').addEventListener('input', updateSliderBadges);
     document.getElementById('set-minutes-limit').addEventListener('input', updateSliderBadges);
+    document.getElementById('set-tasks-count').addEventListener('input', updateSliderBadges);
     document.getElementById('btn-games-dec').addEventListener('click', () => {
       const el = document.getElementById('set-games-limit');
       el.value = String(Math.max(0, (parseInt(el.value, 10) || 0) - 1));
@@ -4719,6 +4793,16 @@
       el.value = String(Math.min(10, (parseInt(el.value, 10) || 0) + 1));
       updateSliderBadges();
     });
+    document.getElementById('btn-tasks-dec').addEventListener('click', () => {
+      const el = document.getElementById('set-tasks-count');
+      el.value = String(Math.max(1, (parseInt(el.value, 10) || 1) - 1));
+      updateSliderBadges();
+    });
+    document.getElementById('btn-tasks-inc').addEventListener('click', () => {
+      const el = document.getElementById('set-tasks-count');
+      el.value = String(Math.min(10, (parseInt(el.value, 10) || 1) + 1));
+      updateSliderBadges();
+    });
 
     document.getElementById('btn-settings').addEventListener('click', () => {
       document.getElementById('set-gate-enabled').checked = gateSettings.enabled;
@@ -4726,7 +4810,8 @@
       const mVal = gateSettings.triggerByMinutes ? Math.max(0, Math.min(10, gateSettings.minutesLimit || 0)) : 0;
       document.getElementById('set-games-limit').value = String(gVal);
       document.getElementById('set-minutes-limit').value = String(mVal);
-      document.getElementById('set-tasks-count').value = String(gateSettings.tasksPerBreak || 1);
+      document.getElementById('set-tasks-count').value = String(Math.max(1, Math.min(10, gateSettings.tasksPerBreak || 1)));
+      document.getElementById('set-random-order').checked = gateSettings.randomOrder !== false;
       document.getElementById('set-json-input').value = gateSettings.customJson;
       document.getElementById('set-history-name').value = '';
       updateSliderBadges();
@@ -4748,6 +4833,143 @@
       addGateHistoryEntry(document.getElementById('set-json-input').value, document.getElementById('set-history-name').value);
       renderSettingsHistory();
     });
+
+    function showImportFeedback(type, msg) {
+      const box = document.getElementById('set-import-feedback');
+      box.textContent = msg;
+      box.className = type === 'success'
+        ? 'px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold bg-emerald-50 border-emerald-200 text-emerald-900'
+        : 'px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold bg-rose-50 border-rose-200 text-rose-800';
+    }
+    function extractFileSetName(src) {
+      const cleaned = String(src || '').split('?')[0].split('#')[0].trim();
+      const segs = cleaned.replace(/\\/g, '/').split('/').filter(Boolean);
+      const last = segs[segs.length - 1] || '';
+      try { return decodeURIComponent(last).replace(/\.(json|txt)$/i, '').trim(); } catch { return last.replace(/\.(json|txt)$/i, '').trim(); }
+    }
+    function applyImportedSetHtml(jsonStr, name, count, sourceLabel) {
+      document.getElementById('set-json-input').value = jsonStr;
+      document.getElementById('set-history-name').value = name || '';
+      addGateHistoryEntry(jsonStr, name);
+      refreshSettingsJsonValidation();
+      renderSettingsHistory();
+      showImportFeedback('success', `Načtena sada${name ? ` „${name}“` : ''} ${sourceLabel} (${count} úkolů).`);
+    }
+    async function handleImportedFilesHtml(files, fromFolder) {
+      if (!files || !files.length) return;
+      const list = Array.from(files);
+      const candidates = fromFolder ? list.filter(f => /\.(json|txt)$/i.test(f.name)) : list;
+      if (!candidates.length) {
+        showImportFeedback('error', 'Ve vybrané složce nebyl nalezen žádný .json soubor.');
+        return;
+      }
+      const sets = [];
+      let skipped = 0;
+      for (const file of candidates) {
+        try {
+          const text = await file.text();
+          const res = parseGateTasksJson(text);
+          if (res.ok) {
+            let parsedObj = null;
+            try { parsedObj = JSON.parse(text); } catch {}
+            const name = (parsedObj && typeof parsedObj === 'object' && !Array.isArray(parsedObj) && typeof parsedObj.name === 'string' && parsedObj.name.trim())
+              ? parsedObj.name.trim()
+              : extractFileSetName(file.name);
+            sets.push({ name, json: JSON.stringify(res.tasks, null, 2), count: res.tasks.length });
+          } else {
+            skipped++;
+          }
+        } catch {
+          skipped++;
+        }
+      }
+      if (!sets.length) {
+        showImportFeedback('error', 'Nepodařilo se načíst žádný platný JSON soubor s úkoly.');
+        return;
+      }
+      for (let i = sets.length - 1; i >= 0; i--) {
+        addGateHistoryEntry(sets[i].json, sets[i].name);
+      }
+      document.getElementById('set-json-input').value = sets[0].json;
+      document.getElementById('set-history-name').value = sets[0].name || '';
+      refreshSettingsJsonValidation();
+      renderSettingsHistory();
+      const catEl = document.getElementById('set-web-catalog');
+      catEl.classList.add('hidden');
+      catEl.innerHTML = '';
+      showImportFeedback(
+        'success',
+        sets.length === 1
+          ? `Načtena sada „${sets[0].name || 'JSON'}“ ze souboru (${sets[0].count} úkolů).`
+          : `Načteno ${sets.length} sad ${fromFolder ? 'ze složky' : 'ze souborů'} (aktivní: „${sets[0].name}“)${skipped ? ` · přeskočeno ${skipped}` : ''}.`
+      );
+    }
+    async function fetchTasksFromWebHtml(rawUrl, overrideName) {
+      const trimmed = String(rawUrl || '').trim();
+      if (!trimmed || /^(javascript|data|vbscript|file):/i.test(trimmed)) {
+        showImportFeedback('error', 'Zadejte platnou adresu https://, http:// nebo relativní cestu (např. ./ukoly.json).');
+        return;
+      }
+      const url = (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('./') || trimmed.startsWith('../') || trimmed.startsWith('/'))
+        ? trimmed
+        : (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(trimmed) ? `https://${trimmed}` : `./${trimmed}`);
+      try { sessionStorage.setItem('learning_gate_last_url_v1', trimmed); } catch {}
+      const btn = document.getElementById('btn-set-import-url');
+      btn.disabled = true;
+      btn.textContent = 'Načítám…';
+      try {
+        const resp = await fetch(url, { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        let parsed = null;
+        try { parsed = JSON.parse(text); } catch { showImportFeedback('error', 'Stažený soubor není platný JSON.'); return; }
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.sets)) {
+          const catEl = document.getElementById('set-web-catalog');
+          catEl.innerHTML = '';
+          const validItems = parsed.sets.filter(it => it && typeof it === 'object' && (typeof it.url === 'string' || Array.isArray(it.tasks)));
+          if (!validItems.length) { showImportFeedback('error', 'Katalog "sets" neobsahuje žádné platné sady.'); return; }
+          validItems.forEach((item, idx) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'w-full px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white hover:bg-indigo-100 text-left text-xs font-bold text-indigo-950';
+            const label = (typeof item.name === 'string' && item.name.trim()) ? item.name.trim() : `Sada #${idx + 1}`;
+            b.textContent = label;
+            b.addEventListener('click', () => {
+              if (Array.isArray(item.tasks)) {
+                const r = parseGateTasksJson(JSON.stringify(item.tasks));
+                if (r.ok) applyImportedSetHtml(JSON.stringify(r.tasks, null, 2), label, r.tasks.length, 'z webového katalogu');
+              } else if (typeof item.url === 'string') {
+                const resolved = new URL(item.url, new URL(url, location.href)).href;
+                fetchTasksFromWebHtml(resolved, label);
+              }
+            });
+            catEl.appendChild(b);
+          });
+          catEl.classList.remove('hidden');
+          catEl.classList.add('flex');
+          showImportFeedback('success', `Načten webový katalog (${validItems.length} sad) — vyberte sadu níže.`);
+          return;
+        }
+        const res = parseGateTasksJson(text);
+        if (!res.ok) { showImportFeedback('error', res.error); return; }
+        const name = overrideName || ((parsed && typeof parsed === 'object' && !Array.isArray(parsed) && typeof parsed.name === 'string' && parsed.name.trim()) ? parsed.name.trim() : extractFileSetName(url));
+        applyImportedSetHtml(JSON.stringify(res.tasks, null, 2), name, res.tasks.length, 'z webu');
+      } catch (err) {
+        showImportFeedback('error', err && String(err.message).startsWith('HTTP ') ? `Server vrátil chybu ${err.message}.` : 'Soubor se nepodařilo stáhnout. Zkontrolujte URL nebo CORS na serveru.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Načíst';
+      }
+    }
+    document.getElementById('btn-set-import-file').addEventListener('click', () => document.getElementById('set-file-input').click());
+    document.getElementById('btn-set-import-folder').addEventListener('click', () => document.getElementById('set-folder-input').click());
+    document.getElementById('set-file-input').addEventListener('change', (e) => { handleImportedFilesHtml(e.target.files, false); e.target.value = ''; });
+    document.getElementById('set-folder-input').addEventListener('change', (e) => { handleImportedFilesHtml(e.target.files, true); e.target.value = ''; });
+    document.getElementById('btn-set-import-url').addEventListener('click', () => fetchTasksFromWebHtml(document.getElementById('set-web-url').value));
+    try {
+      const savedUrl = sessionStorage.getItem('learning_gate_last_url_v1');
+      if (savedUrl) document.getElementById('set-web-url').value = savedUrl;
+    } catch {}
     document.getElementById('btn-set-reset-progress').addEventListener('click', () => {
       gateProgress.gamesSinceLastGate = 0; gateProgress.secondsSinceLastGate = 0; gateProgress.gatePending = false;
       persistGate();
@@ -4755,8 +4977,9 @@
     });
     document.getElementById('btn-set-preview').addEventListener('click', () => {
       const res = refreshSettingsJsonValidation();
-      const cnt = Math.max(1, Math.min(5, parseInt(document.getElementById('set-tasks-count').value, 10) || 1));
-      if (res.ok) openLearningGate('preview', res.tasks.slice(0, cnt));
+      const cnt = Math.max(1, Math.min(10, parseInt(document.getElementById('set-tasks-count').value, 10) || 1));
+      const rnd = document.getElementById('set-random-order').checked;
+      if (res.ok) openLearningGate('preview', res.tasks, cnt, rnd);
     });
     document.getElementById('btn-download-html').addEventListener('click', () => {
       const a = document.createElement('a');
@@ -4775,6 +4998,7 @@
     document.getElementById('btn-set-cancel').addEventListener('click', () => document.getElementById('settings-modal').classList.add('hidden'));
     document.getElementById('btn-set-save').addEventListener('click', () => {
       const rawJson = document.getElementById('set-json-input').value;
+      const jsonChanged = rawJson.trim() !== String(gateSettings.customJson || '').trim();
       addGateHistoryEntry(rawJson, document.getElementById('set-history-name').value);
       const gamesVal = Math.max(0, Math.min(10, parseInt(document.getElementById('set-games-limit').value, 10) || 0));
       const minsVal = Math.max(0, Math.min(10, parseInt(document.getElementById('set-minutes-limit').value, 10) || 0));
@@ -4784,9 +5008,11 @@
         gamesLimit: gamesVal,
         triggerByMinutes: minsVal > 0,
         minutesLimit: minsVal,
-        tasksPerBreak: Math.max(1, Math.min(5, parseInt(document.getElementById('set-tasks-count').value, 10) || 1)),
+        tasksPerBreak: Math.max(1, Math.min(10, parseInt(document.getElementById('set-tasks-count').value, 10) || 1)),
+        randomOrder: document.getElementById('set-random-order').checked,
         customJson: rawJson
       };
+      if (jsonChanged) { gateProgress.taskCursor = 0; gateProgress.remainingOrder = []; }
       if (!gateSettings.enabled) gateProgress.gatePending = false;
       persistGate();
       document.getElementById('settings-modal').classList.add('hidden');
@@ -4802,9 +5028,8 @@
           gateProgress.gamesSinceLastGate = 0;
           gateProgress.secondsSinceLastGate = 0;
           gateProgress.gatePending = false;
-          const bank = parseGateTasksJson(gateSettings.customJson);
-          const len = bank.ok ? bank.tasks.length : DEFAULT_GATE_TASKS.length;
-          gateProgress.taskCursor = (gateProgress.taskCursor + gateRuntime.tasks.length) % len;
+          if (typeof gateRuntime.nextCursor === 'number') gateProgress.taskCursor = gateRuntime.nextCursor;
+          if (Array.isArray(gateRuntime.nextDeck)) gateProgress.remainingOrder = gateRuntime.nextDeck;
           persistGate();
         }
         renderLearningGate();

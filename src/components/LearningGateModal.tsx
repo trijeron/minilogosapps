@@ -227,6 +227,28 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
           )}
         </div>
 
+        {/* Multi-question progress bar */}
+        {tasks.length > 1 && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+              <span>
+                Otázka {taskIdx + 1} z {tasks.length} pro pokračování
+              </span>
+              <span className="tabular-nums text-indigo-700">
+                {Math.round(((taskIdx + (taskSolved ? 1 : 0)) / tasks.length) * 100)} %
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-600 rounded-full transition-all duration-300"
+                style={{
+                  width: `${Math.round(((taskIdx + (taskSolved ? 1 : 0)) / tasks.length) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Prompt */}
         <div className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
           {currentTask.prompt}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   Settings,
@@ -13,6 +13,11 @@ import {
   BookmarkPlus,
   Minus,
   Plus,
+  Upload,
+  FolderOpen,
+  Globe,
+  Loader2,
+  Shuffle,
 } from 'lucide-react';
 import {
   LearningGateProgress,
@@ -22,8 +27,15 @@ import {
 } from '../types/learningGate';
 import {
   DEFAULT_ENGLISH_TASKS_JSON,
+  RemoteCatalogItem,
   parseLearningTasksJson,
+  parseRemoteTasksOrCatalog,
+  validateTaskSourceUrl,
 } from '../utils/learningTasks';
+import {
+  loadLastTaskSourceUrl,
+  saveLastTaskSourceUrl,
+} from '../utils/storage';
 import { formatTime } from '../utils/format';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -36,7 +48,7 @@ interface SettingsModalProps {
   onSaveToHistory: (rawJson: string, setName?: string) => void;
   onDeleteHistory: (id: string) => void;
   onResetProgress: () => void;
-  onPreviewTasks: (tasks: LearningTask[], count: number) => void;
+  onPreviewTasks: (tasks: LearningTask[], count: number, randomOrder: boolean) => void;
   onClose: () => void;
 }
 
@@ -55,13 +67,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [draft, setDraft] = useState<LearningGateSettings>(settings);
   const [setName, setSetName] = useState<string>('');
   const [showSchemaHelp, setShowSchemaHelp] = useState(false);
+  const [webUrl, setWebUrl] = useState<string>(() => loadLastTaskSourceUrl());
+  const [isLoadingWeb, setIsLoadingWeb] = useState<boolean>(false);
+  const [webCatalog, setWebCatalog] = useState<RemoteCatalogItem[]>([]);
+  const [importFeedback, setImportFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setDraft(settings);
       setSetName('');
+      setImportFeedback(null);
+      setWebUrl(loadLastTaskSourceUrl());
     }
   }, [isOpen, settings]);
+
+  useEffect(() => {
+    if (folderInputRef.current) {
+      folderInputRef.current.setAttribute('webkitdirectory', '');
+      folderInputRef.current.setAttribute('directory', '');
+    }
+  }, [isOpen]);
 
   const jsonValidation = useMemo(
     () => parseLearningTasksJson(draft.customJson),
@@ -70,9 +101,189 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  const applyImportedTaskSet = (
+    normalizedJson: string,
+    importedName: string | undefined,
+    taskCount: number,
+    sourceLabel: string
+  ) => {
+    setDraft((prev) => ({ ...prev, customJson: normalizedJson }));
+    if (importedName) {
+      setSetName(importedName);
+    }
+    onSaveToHistory(normalizedJson, importedName);
+    setImportFeedback({
+      type: 'success',
+      message: `Načtena sada${importedName ? ` „${importedName}“` : ''} ${sourceLabel} (${taskCount} úkolů).`,
+    });
+  };
+
+  const handleFilesSelected = async (
+    fileList: FileList | null,
+    fromFolder: boolean
+  ) => {
+    if (!fileList || fileList.length === 0) return;
+    setImportFeedback(null);
+
+    const allFiles = Array.from(fileList);
+    const jsonCandidates = fromFolder
+      ? allFiles.filter((f) => /\.(json|txt)$/i.test(f.name))
+      : allFiles;
+
+    if (jsonCandidates.length === 0) {
+      setImportFeedback({
+        type: 'error',
+        message: 'Ve vybrané složce nebyl nalezen žádný .json soubor.',
+      });
+      return;
+    }
+
+    const importedSets: Array<{
+      name?: string;
+      json: string;
+      taskCount: number;
+    }> = [];
+    let skipped = 0;
+    let lastError = '';
+
+    for (const file of jsonCandidates) {
+      try {
+        const text = await file.text();
+        const res = parseRemoteTasksOrCatalog(text, file.name);
+        if (res.kind === 'tasks') {
+          importedSets.push({
+            name: res.name,
+            json: res.normalizedJson,
+            taskCount: res.tasks.length,
+          });
+        } else if (res.kind === 'catalog') {
+          const inlineItems = res.items.filter((it) => it.inlineJson);
+          if (inlineItems.length > 0) {
+            for (const item of inlineItems) {
+              importedSets.push({
+                name: item.name,
+                json: item.inlineJson!,
+                taskCount: item.taskCount || 1,
+              });
+            }
+          } else {
+            skipped++;
+            lastError = `Soubor ${file.name} obsahuje pouze webový katalog odkazů.`;
+          }
+        } else {
+          skipped++;
+          lastError = `${file.name}: ${res.error}`;
+        }
+      } catch {
+        skipped++;
+        lastError = `Soubor ${file.name} se nepodařilo přečíst.`;
+      }
+    }
+
+    if (importedSets.length === 0) {
+      setImportFeedback({
+        type: 'error',
+        message: lastError || 'Nepodařilo se načíst žádný platný JSON soubor s úkoly.',
+      });
+      return;
+    }
+
+    // Save in reverse order so the first file appears at the top of the list
+    for (let i = importedSets.length - 1; i >= 0; i--) {
+      onSaveToHistory(importedSets[i].json, importedSets[i].name);
+    }
+
+    const first = importedSets[0];
+    setDraft((prev) => ({ ...prev, customJson: first.json }));
+    setSetName(first.name || '');
+    setWebCatalog([]);
+
+    if (importedSets.length === 1) {
+      setImportFeedback({
+        type: 'success',
+        message: `Načtena sada${first.name ? ` „${first.name}“` : ''} ze souboru (${first.taskCount} úkolů)${skipped > 0 ? ` · přeskočeno ${skipped}` : ''}.`,
+      });
+    } else {
+      setImportFeedback({
+        type: 'success',
+        message: `Načteno ${importedSets.length} sad ${fromFolder ? 'ze složky' : 'ze souborů'} (aktivní: „${first.name || 'Sada 1'}“)${skipped > 0 ? ` · přeskočeno ${skipped}` : ''}.`,
+      });
+    }
+  };
+
+  const fetchJsonFromUrl = async (targetUrl: string, overrideName?: string) => {
+    const validated = validateTaskSourceUrl(targetUrl);
+    if (!validated.ok) {
+      setImportFeedback({ type: 'error', message: validated.error });
+      return;
+    }
+
+    setIsLoadingWeb(true);
+    setImportFeedback(null);
+    saveLastTaskSourceUrl(targetUrl);
+
+    try {
+      const response = await fetch(validated.url, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Server vrátil chybu HTTP ${response.status}.`);
+      }
+      const text = await response.text();
+      const parsed = parseRemoteTasksOrCatalog(text, validated.url);
+
+      if (parsed.kind === 'error') {
+        setImportFeedback({ type: 'error', message: parsed.error });
+        return;
+      }
+
+      if (parsed.kind === 'catalog') {
+        setWebCatalog(parsed.items);
+        setImportFeedback({
+          type: 'success',
+          message: `Načten webový katalog (${parsed.items.length} sad) — klikněte na sadu níže.`,
+        });
+        return;
+      }
+
+      const finalName = overrideName || parsed.name;
+      applyImportedTaskSet(
+        parsed.normalizedJson,
+        finalName,
+        parsed.tasks.length,
+        'z webu'
+      );
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message.startsWith('Server vrátil')
+          ? err.message
+          : 'Soubor se nepodařilo stáhnout. Zkontrolujte URL, připojení nebo CORS nastavení na serveru.';
+      setImportFeedback({ type: 'error', message: msg });
+    } finally {
+      setIsLoadingWeb(false);
+    }
+  };
+
+  const handleSelectCatalogItem = async (item: RemoteCatalogItem) => {
+    if (item.inlineJson) {
+      const check = parseLearningTasksJson(item.inlineJson);
+      if (check.ok) {
+        applyImportedTaskSet(
+          item.inlineJson,
+          item.name,
+          check.tasks.length,
+          'z webového katalogu'
+        );
+      }
+      return;
+    }
+    if (item.url) {
+      await fetchJsonFromUrl(item.url, item.name);
+    }
+  };
+
   const canSave = !draft.enabled || jsonValidation.ok;
   const effectiveGamesLimit = Math.max(0, Math.min(10, Math.round(Number(draft.gamesLimit) || 0)));
   const effectiveMinutesLimit = Math.max(0, Math.min(10, Math.round(Number(draft.minutesLimit) || 0)));
+  const effectiveTasksPerBreak = Math.max(1, Math.min(10, Math.round(Number(draft.tasksPerBreak) || 1)));
   const noTriggerSelected =
     draft.enabled && effectiveGamesLimit === 0 && effectiveMinutesLimit === 0;
   const normalizedDraftJson = draft.customJson.trim();
@@ -87,6 +298,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const formatMinutesBadge = (mins: number) => {
     if (mins === 0) return 'Nikdy (0)';
     return `${mins} min`;
+  };
+
+  const formatQuestionsBadge = (count: number) => {
+    if (count === 1) return '1 otázka';
+    if (count >= 2 && count <= 4) return `${count} otázky`;
+    return `${count} otázek`;
   };
 
   const setGamesLimitValue = (val: number) => {
@@ -107,6 +324,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }));
   };
 
+  const setTasksPerBreakValue = (val: number) => {
+    const clamped = Math.max(1, Math.min(10, Math.round(val)));
+    setDraft((prev) => ({
+      ...prev,
+      tasksPerBreak: clamped,
+    }));
+  };
+
   const handleSaveClick = () => {
     if (!canSave) return;
     onSave(
@@ -116,7 +341,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         gamesLimit: effectiveGamesLimit,
         triggerByMinutes: effectiveMinutesLimit > 0,
         minutesLimit: effectiveMinutesLimit,
-        tasksPerBreak: Math.max(1, Math.min(5, Number(draft.tasksPerBreak) || 1)),
+        tasksPerBreak: effectiveTasksPerBreak,
+        randomOrder: Boolean(draft.randomOrder),
       },
       setName.trim() || undefined
     );
@@ -310,33 +536,88 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
         </div>
 
-        {/* Tasks per break + Current counter status */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700">
-              Úkolů v jedné přestávce:
-            </span>
-            <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg">
-              {[1, 2, 3].map((cnt) => (
-                <button
-                  key={cnt}
-                  type="button"
-                  onClick={() =>
-                    setDraft((prev) => ({ ...prev, tasksPerBreak: cnt }))
-                  }
-                  className={`px-2.5 py-1 text-xs font-bold rounded-md transition-colors ${
-                    draft.tasksPerBreak === cnt
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {cnt}
-                </button>
-              ))}
+        {/* Questions per break (1–10 slider) + Random order toggle */}
+        <div className="flex flex-col gap-2.5">
+          {/* Questions count slider (1–10) */}
+          <div className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-xs sm:text-sm font-bold text-slate-900">
+                  Počet otázek pro pokračování
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Kolik otázek musí hráč správně vyřešit, aby mohl hrát dál
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold tabular-nums shrink-0 bg-indigo-100 text-indigo-800">
+                {formatQuestionsBadge(effectiveTasksPerBreak)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setTasksPerBreakValue(effectiveTasksPerBreak - 1)}
+                disabled={effectiveTasksPerBreak <= 1}
+                aria-label="Snížit počet otázek pro pokračování"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                step={1}
+                value={effectiveTasksPerBreak}
+                onChange={(e) => setTasksPerBreakValue(Number(e.target.value))}
+                aria-label="Počet otázek pro pokračování (1 až 10)"
+                className="flex-1 h-2.5 accent-indigo-600 cursor-pointer touch-pan-x"
+              />
+              <button
+                type="button"
+                onClick={() => setTasksPerBreakValue(effectiveTasksPerBreak + 1)}
+                disabled={effectiveTasksPerBreak >= 10}
+                aria-label="Zvýšit počet otázek pro pokračování"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-10">
+              <span>1 otázka</span>
+              <span>5</span>
+              <span>10 otázek</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-500 tabular-nums">
+          {/* Random rotation switch */}
+          <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
+            <div className="flex items-start gap-2">
+              <Shuffle className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-slate-900">
+                  Náhodné střídání otázek
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {draft.randomOrder
+                    ? 'Otázky se losují náhodně bez opakování, dokud se neprostřídají všechny'
+                    : 'Otázky se zobrazují postupně v pořadí ze zadání'}
+                </p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={draft.randomOrder}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, randomOrder: e.target.checked }))
+              }
+              className="w-5 h-5 accent-indigo-600 rounded cursor-pointer shrink-0"
+            />
+          </label>
+
+          {/* Current counter status */}
+          <div className="flex items-center justify-end gap-2 px-1 text-xs text-slate-500 tabular-nums">
             <span>
               Odehráno:{' '}
               <strong className="text-slate-800">
@@ -422,6 +703,138 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
+        {/* Import JSON Tasks from Phone (File / Folder) or Web URL */}
+        <div className="flex flex-col gap-2.5 p-3 rounded-2xl bg-indigo-50/55 border border-indigo-200/70">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
+              <FolderOpen className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Načíst úkoly z telefonu nebo z webu</span>
+            </span>
+            <span className="text-[10px] text-indigo-700 font-semibold">
+              .json
+            </span>
+          </div>
+
+          {/* Hidden native pickers */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json,.txt,text/plain"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              void handleFilesSelected(e.target.files, false);
+              e.target.value = '';
+            }}
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              void handleFilesSelected(e.target.files, true);
+              e.target.value = '';
+            }}
+          />
+
+          {/* Device / Phone file & folder buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-2 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+            >
+              <Upload className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>Soubor(y) JSON</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => folderInputRef.current?.click()}
+              className="px-3 py-2 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>Složka v telefonu</span>
+            </button>
+          </div>
+
+          {/* Web URL loader */}
+          <div className="flex items-center gap-1.5">
+            <div className="relative flex-1 min-w-0">
+              <Globe className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="url"
+                value={webUrl}
+                onChange={(e) => setWebUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void fetchJsonFromUrl(webUrl);
+                  }
+                }}
+                placeholder="https://ithonza.cz/games/ukoly.json nebo ./ukoly.json"
+                className="w-full pl-8 pr-2.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={isLoadingWeb || !webUrl.trim()}
+              onClick={() => void fetchJsonFromUrl(webUrl)}
+              className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-45 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors shadow-2xs"
+            >
+              {isLoadingWeb ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Globe className="w-3.5 h-3.5" />
+              )}
+              <span>Načíst</span>
+            </button>
+          </div>
+
+          {/* Optional Web Catalog Picker */}
+          {webCatalog.length > 0 && (
+            <div className="flex flex-col gap-1.5 pt-1 border-t border-indigo-200/70">
+              <p className="text-[11px] font-bold text-indigo-900">
+                Vyberte sadu z webového katalogu ({webCatalog.length}):
+              </p>
+              <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                {webCatalog.map((item, idx) => (
+                  <button
+                    key={`${item.name}_${idx}`}
+                    type="button"
+                    disabled={isLoadingWeb}
+                    onClick={() => void handleSelectCatalogItem(item)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white hover:bg-indigo-100/70 text-left flex items-center justify-between gap-2 text-xs font-bold text-indigo-950 transition-colors disabled:opacity-50"
+                  >
+                    <span className="truncate">{item.name}</span>
+                    <span className="text-[10px] font-semibold text-indigo-600 shrink-0">
+                      {item.taskCount ? `${item.taskCount} úkolů` : 'Stáhnout'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Import Feedback Banner */}
+          {importFeedback && (
+            <div
+              className={`px-2.5 py-2 rounded-xl border text-[11px] font-semibold flex items-start gap-1.5 ${
+                importFeedback.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-rose-50 border-rose-200 text-rose-800'
+              }`}
+            >
+              {importFeedback.type === 'success' ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+              )}
+              <span>{importFeedback.message}</span>
+            </div>
+          )}
+        </div>
+
         {/* JSON Editor Section */}
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -475,7 +888,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     "options": ["Red", "Blue", "Green"],
     "correctIndex": 1
   }
-]`}
+]
+
+// Volitelný webový katalog více sad:
+// { "sets": [{ "name": "Lekce 1", "url": "./lekce1.json" }] }`}
             </pre>
           )}
 
@@ -526,7 +942,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() =>
-                  onPreviewTasks(jsonValidation.tasks, draft.tasksPerBreak)
+                  onPreviewTasks(
+                    jsonValidation.tasks,
+                    effectiveTasksPerBreak,
+                    draft.randomOrder
+                  )
                 }
                 className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shrink-0"
               >

@@ -107,6 +107,7 @@ export const DEFAULT_LEARNING_GATE_SETTINGS: LearningGateSettings = {
   triggerByMinutes: false,
   minutesLimit: 0,
   tasksPerBreak: 1,
+  randomOrder: true,
   customJson: DEFAULT_ENGLISH_TASKS_JSON,
 };
 
@@ -286,12 +287,96 @@ export function selectTasksForBreak(
   count: number
 ): LearningTask[] {
   if (tasks.length === 0) return [DEFAULT_ENGLISH_TASKS[0]];
-  const safeCount = Math.max(1, Math.min(5, count));
+  const safeCount = Math.max(1, Math.min(10, Math.round(count)));
   const picked: LearningTask[] = [];
   for (let i = 0; i < safeCount; i++) {
     picked.push(tasks[(cursor + i) % tasks.length]);
   }
   return picked;
+}
+
+export interface DrawTasksResult {
+  tasks: LearningTask[];
+  nextCursor: number;
+  nextRemainingOrder: number[];
+}
+
+function buildShuffledIndices(
+  length: number,
+  avoidFirstIndex: number | null,
+  rng: () => number
+): number[] {
+  const arr = Array.from({ length }, (_, i) => i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  if (length > 1 && avoidFirstIndex !== null && arr[0] === avoidFirstIndex) {
+    const swapIdx = 1 + Math.floor(rng() * (length - 1));
+    [arr[0], arr[swapIdx]] = [arr[swapIdx], arr[0]];
+  }
+  return arr;
+}
+
+export function drawTasksForBreak(
+  tasks: LearningTask[],
+  count: number,
+  options: {
+    randomOrder: boolean;
+    taskCursor?: number;
+    remainingOrder?: number[];
+    rng?: () => number;
+  }
+): DrawTasksResult {
+  const safeTasks = tasks.length > 0 ? tasks : [DEFAULT_ENGLISH_TASKS[0]];
+  const safeCount = Math.max(1, Math.min(10, Math.round(count)));
+  const cursor = Math.max(0, Math.floor(options.taskCursor ?? 0));
+
+  if (!options.randomOrder) {
+    const picked = selectTasksForBreak(safeTasks, cursor, safeCount);
+    return {
+      tasks: picked,
+      nextCursor: (cursor + safeCount) % safeTasks.length,
+      nextRemainingOrder: [],
+    };
+  }
+
+  const rng = options.rng ?? Math.random;
+  // Sanitize incoming remainingOrder: keep unique valid indices within bounds
+  const seen = new Set<number>();
+  const deck: number[] = [];
+  if (Array.isArray(options.remainingOrder)) {
+    for (const idx of options.remainingOrder) {
+      if (
+        typeof idx === 'number' &&
+        Number.isInteger(idx) &&
+        idx >= 0 &&
+        idx < safeTasks.length &&
+        !seen.has(idx)
+      ) {
+        seen.add(idx);
+        deck.push(idx);
+      }
+    }
+  }
+
+  const picked: LearningTask[] = [];
+  let lastIdx: number | null = null;
+
+  for (let i = 0; i < safeCount; i++) {
+    if (deck.length === 0) {
+      deck.push(...buildShuffledIndices(safeTasks.length, lastIdx, rng));
+    }
+    const nextIdx = deck.shift()!;
+    lastIdx = nextIdx;
+    picked.push(safeTasks[nextIdx]);
+  }
+
+  return {
+    tasks: picked,
+    nextCursor: cursor,
+    nextRemainingOrder: deck,
+  };
 }
 
 export function normalizeAnswerText(val: string): string {
@@ -358,4 +443,193 @@ export const DEFAULT_TASK_HISTORY_ENTRY: LearningTaskHistoryEntry = {
   typesSummary: summarizeTaskTypes(DEFAULT_ENGLISH_TASKS),
   savedAt: 0,
 };
+
+export interface RemoteCatalogItem {
+  name: string;
+  url?: string;
+  inlineJson?: string;
+  taskCount?: number;
+}
+
+export type RemoteTasksParseResult =
+  | {
+      kind: 'tasks';
+      name?: string;
+      tasks: LearningTask[];
+      normalizedJson: string;
+    }
+  | {
+      kind: 'catalog';
+      items: RemoteCatalogItem[];
+    }
+  | {
+      kind: 'error';
+      error: string;
+    };
+
+export function extractSetNameFromFilename(source: string): string {
+  const cleaned = source.split('?')[0].split('#')[0].trim();
+  if (!cleaned) return '';
+  const segments = cleaned.replace(/\\/g, '/').split('/').filter(Boolean);
+  const last = segments[segments.length - 1] || '';
+  let decoded = last;
+  try {
+    decoded = decodeURIComponent(last);
+  } catch {
+    // keep raw segment
+  }
+  return decoded.replace(/\.(json|txt)$/i, '').trim();
+}
+
+export function extractSetNameFromJsonOrSource(
+  rawJson: string,
+  fallbackSource?: string
+): string | undefined {
+  try {
+    const parsed = JSON.parse(rawJson);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed) &&
+      typeof (parsed as { name?: unknown }).name === 'string' &&
+      (parsed as { name: string }).name.trim().length > 0
+    ) {
+      return (parsed as { name: string }).name.trim();
+    }
+  } catch {
+    // fall through to filename
+  }
+  if (fallbackSource) {
+    const fromSource = extractSetNameFromFilename(fallbackSource);
+    if (fromSource) return fromSource;
+  }
+  return undefined;
+}
+
+export function validateTaskSourceUrl(
+  input: string
+): { ok: true; url: string } | { ok: false; error: string } {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return { ok: false, error: 'Zadejte adresu (URL) JSON souboru.' };
+  }
+  if (/^(javascript|data|vbscript|file):/i.test(trimmed)) {
+    return {
+      ok: false,
+      error: 'Nepodporovaný protokol. Použijte https://, http:// nebo relativní cestu (např. ./ukoly.json).',
+    };
+  }
+  if (
+    /^https?:\/\//i.test(trimmed) ||
+    trimmed.startsWith('./') ||
+    trimmed.startsWith('../') ||
+    trimmed.startsWith('/')
+  ) {
+    return { ok: true, url: trimmed };
+  }
+  // Allow bare relative path like "tasks/anglictina.json" or domain like "ithonza.cz/games/ukoly.json"
+  if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(trimmed)) {
+    return { ok: true, url: `https://${trimmed}` };
+  }
+  return { ok: true, url: `./${trimmed}` };
+}
+
+export function resolveRelativeUrl(targetUrl: string, baseUrl?: string): string {
+  const trimmed = targetUrl.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  try {
+    const fallbackOrigin =
+      typeof window !== 'undefined' && window.location?.href
+        ? window.location.href
+        : 'https://example.invalid/';
+    const resolvedBase = baseUrl ? new URL(baseUrl, fallbackOrigin).href : fallbackOrigin;
+    return new URL(trimmed, resolvedBase).href;
+  } catch {
+    return trimmed;
+  }
+}
+
+export function parseRemoteTasksOrCatalog(
+  rawJson: string,
+  sourceUrl?: string
+): RemoteTasksParseResult {
+  const trimmed = rawJson.trim();
+  if (!trimmed) {
+    return { kind: 'error', error: 'Načtený soubor je prázdný.' };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Neplatná syntaxe JSON';
+    return { kind: 'error', error: `Neplatný JSON: ${msg}` };
+  }
+
+  // Catalog format: { "sets": [ { "name": "...", "url": "..." } | { "name": "...", "tasks": [...] } ] }
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    !Array.isArray(parsed) &&
+    Array.isArray((parsed as { sets?: unknown }).sets)
+  ) {
+    const rawSets = (parsed as { sets: unknown[] }).sets;
+    const items: RemoteCatalogItem[] = [];
+
+    for (let i = 0; i < rawSets.length; i++) {
+      const entry = rawSets[i];
+      if (!entry || typeof entry !== 'object') continue;
+      const obj = entry as Record<string, unknown>;
+      const name =
+        typeof obj.name === 'string' && obj.name.trim().length > 0
+          ? obj.name.trim()
+          : typeof obj.url === 'string'
+            ? extractSetNameFromFilename(obj.url) || `Sada #${i + 1}`
+            : `Sada #${i + 1}`;
+
+      if (typeof obj.url === 'string' && obj.url.trim().length > 0) {
+        const checked = validateTaskSourceUrl(obj.url);
+        if (checked.ok) {
+          items.push({
+            name,
+            url: resolveRelativeUrl(checked.url, sourceUrl),
+          });
+        }
+      } else if (Array.isArray(obj.tasks)) {
+        const inlineJson = JSON.stringify(obj.tasks, null, 2);
+        const res = parseLearningTasksJson(inlineJson);
+        if (res.ok) {
+          items.push({
+            name,
+            inlineJson,
+            taskCount: res.tasks.length,
+          });
+        }
+      }
+    }
+
+    if (items.length === 0) {
+      return {
+        kind: 'error',
+        error: 'Katalog "sets" neobsahuje žádné platné sady úkolů.',
+      };
+    }
+
+    return { kind: 'catalog', items };
+  }
+
+  // Standard single task set: [...] or { "name"?: "...", "tasks": [...] }
+  const tasksRes = parseLearningTasksJson(trimmed);
+  if (!tasksRes.ok) {
+    return { kind: 'error', error: tasksRes.error || 'Neplatný formát úkolů.' };
+  }
+
+  return {
+    kind: 'tasks',
+    name: extractSetNameFromJsonOrSource(trimmed, sourceUrl),
+    tasks: tasksRes.tasks,
+    normalizedJson: JSON.stringify(tasksRes.tasks, null, 2),
+  };
+}
+
 

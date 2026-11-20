@@ -489,9 +489,13 @@ export function loadLearningGateSettings(): LearningGateSettings {
       triggerByMinutes: rawMinutesLimit > 0,
       minutesLimit: rawMinutesLimit,
       tasksPerBreak:
-        typeof parsed.tasksPerBreak === 'number' && parsed.tasksPerBreak >= 1 && parsed.tasksPerBreak <= 5
-          ? Math.floor(parsed.tasksPerBreak)
+        typeof parsed.tasksPerBreak === 'number' && !Number.isNaN(parsed.tasksPerBreak)
+          ? Math.max(1, Math.min(10, Math.floor(parsed.tasksPerBreak)))
           : DEFAULT_LEARNING_GATE_SETTINGS.tasksPerBreak,
+      randomOrder:
+        typeof parsed.randomOrder === 'boolean'
+          ? parsed.randomOrder
+          : DEFAULT_LEARNING_GATE_SETTINGS.randomOrder,
       customJson:
         typeof parsed.customJson === 'string' && parsed.customJson.trim().length > 0
           ? parsed.customJson
@@ -516,6 +520,7 @@ export function loadLearningGateProgress(): LearningGateProgress {
     secondsSinceLastGate: 0,
     gatePending: false,
     taskCursor: 0,
+    remainingOrder: [],
   };
   try {
     const raw = sessionStorage.getItem(LEARNING_PROGRESS_KEY);
@@ -535,6 +540,12 @@ export function loadLearningGateProgress(): LearningGateProgress {
         typeof parsed.taskCursor === 'number' && parsed.taskCursor >= 0
           ? Math.floor(parsed.taskCursor)
           : 0,
+      remainingOrder: Array.isArray(parsed.remainingOrder)
+        ? parsed.remainingOrder.filter(
+            (n: unknown): n is number =>
+              typeof n === 'number' && Number.isInteger(n) && n >= 0
+          )
+        : [],
     };
   } catch {
     return defaults;
@@ -602,6 +613,30 @@ export function deleteLearningTaskFromHistory(id: string): LearningTaskHistoryEn
   }
   return next;
 }
+
+const LEARNING_LAST_URL_KEY = 'learning_gate_last_url_v1';
+
+export function loadLastTaskSourceUrl(): string {
+  try {
+    return sessionStorage.getItem(LEARNING_LAST_URL_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function saveLastTaskSourceUrl(url: string): void {
+  try {
+    const trimmed = url.trim();
+    if (trimmed) {
+      sessionStorage.setItem(LEARNING_LAST_URL_KEY, trimmed);
+    } else {
+      sessionStorage.removeItem(LEARNING_LAST_URL_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
 
 
 

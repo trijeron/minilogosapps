@@ -35,6 +35,7 @@ export interface LearningGateSettings {
   triggerByMinutes: boolean;
   minutesLimit: number;
   tasksPerBreak: number;
+  randomOrder: boolean;
   customJson: string;
 }
 
@@ -43,6 +44,7 @@ export interface LearningGateProgress {
   secondsSinceLastGate: number;
   gatePending: boolean;
   taskCursor: number;
+  remainingOrder?: number[];
 }
 
 export interface LearningTaskHistoryEntry {
