@@ -429,7 +429,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
           key={card.id}
           card={card}
           size={size}
-          overlap
+          overlapMode={viewMode}
           isPlayable={isPlayable}
           isDimmed={isDimmed}
           isTrump={isTrump}
@@ -441,7 +441,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
 
     if (viewMode === 'fan') {
       return (
-        <div className="w-full overflow-x-auto pb-1 pt-2 px-1">
+        <div className="w-full overflow-x-auto pb-1.5 pt-3 px-1.5">
           <div className="mx-auto w-fit flex items-center">
             {cards.map(renderSingleCard)}
           </div>

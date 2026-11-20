@@ -40,9 +40,12 @@ export const ZipRulesModal: React.FC<ZipRulesModalProps> = ({ isOpen, onClose })
           <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
             <ShieldAlert className="w-4 h-4 text-slate-800 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-slate-900">Všechna políčka a žádné zdi</p>
+              <p className="font-bold text-slate-900">Dva režimy hry</p>
               <p>
-                Cesta musí projít <strong>každým políčkem mřížky přesně jednou</strong> (bez křížení) a nesmí překročit tmavé zdi mezi políčky.
+                <strong>Klasický (se zdmi):</strong> cesta musí projít <strong>každým políčkem mřížky přesně jednou</strong> a nesmí překročit tmavé zdi.
+              </p>
+              <p className="mt-1">
+                <strong>Jednoduché spojování:</strong> bez zdí — stačí spojit čísla od <strong>1</strong> do posledního bez křížení vlastní čáry (prázdná políčka nemusíte vyplnit).
               </p>
             </div>
           </div>
@@ -50,9 +53,9 @@ export const ZipRulesModal: React.FC<ZipRulesModalProps> = ({ isOpen, onClose })
           <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
             <Undo2 className="w-4 h-4 text-slate-700 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-slate-900">Rychlý návrat zpět</p>
+              <p className="font-bold text-slate-900">Bezpečné kreslení a návrat zpět</p>
               <p>
-                Přejetím zpět na předchozí políčko cestu plynule zkrátíte. Kliknutím na libovolné dřívější políčko cesty ji zkrátíte až k němu, nebo použijte tlačítko <strong>Zpět</strong>.
+                Když se omylem dotknete dřívější části čáry, spojnice se <strong>neresetuje</strong> — tah se jen zastaví na posledním platném poli. Pro návrat o krok zpět přejeďte na bezprostředně předchozí políčko nebo použijte tlačítko <strong>Zpět</strong>.
               </p>
             </div>
           </div>
@@ -62,7 +65,7 @@ export const ZipRulesModal: React.FC<ZipRulesModalProps> = ({ isOpen, onClose })
             <div>
               <p className="font-bold text-slate-900">Nápověda</p>
               <p>
-                Tlačítko <strong>Nápověda</strong> zvýrazní další správný krok (nebo ukáže políčko, kam se vrátit, pokud jste odbočili).
+                Tlačítko <strong>Nápověda</strong> zvýrazní další správný krok (nebo ukáže políčko, kam se vrátit, pokud jste zablokovali cestu).
               </p>
             </div>
           </div>

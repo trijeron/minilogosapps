@@ -12,6 +12,7 @@ import {
   generateQueensPuzzle,
   findQueensConflicts,
   isQueensCompleted,
+  findConsistentQueensSolution,
 } from '../utils/queensEngine';
 import { sound } from '../utils/audio';
 import {
@@ -427,8 +428,11 @@ export const QueensGame: React.FC<QueensGameProps> = ({
   const handleUseHint = useCallback(() => {
     if (hintsLeft <= 0 || isPaused || isCompleted) return;
 
+    const targetSolution =
+      findConsistentQueensSolution(board, regions, boardSize) ?? solutionQueens;
+
     let targetQueenIdx: number | null = null;
-    for (const qIdx of solutionQueens) {
+    for (const qIdx of targetSolution) {
       if (board[qIdx] !== 2) {
         targetQueenIdx = qIdx;
         break;
@@ -451,7 +455,7 @@ export const QueensGame: React.FC<QueensGameProps> = ({
 
     sound.playHint();
     verifyWin(newBoard);
-  }, [hintsLeft, isPaused, isCompleted, solutionQueens, board, pushHistory, autoCross, applyAutoCross, verifyWin]);
+  }, [hintsLeft, isPaused, isCompleted, board, regions, boardSize, solutionQueens, pushHistory, autoCross, applyAutoCross, verifyWin]);
 
   // Reset board
   const handleResetBoard = useCallback(() => {

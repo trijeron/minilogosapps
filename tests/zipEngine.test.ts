@@ -12,6 +12,7 @@ import {
   countZipSolutions,
   generateZipPuzzle,
   canStepZipPath,
+  applyZipCellInteraction,
   isZipCompleted,
   getZipHint,
 } from '../src/utils/zipEngine';
@@ -155,6 +156,97 @@ test('canStepZipPath and getZipHint enforce walls, sequence order, and backtrack
     backtrackCell: sol[0],
     divergedIndex: 1,
   });
+});
+
+test('applyZipCellInteraction never cuts or resets path when touching earlier segments of the line', () => {
+  const size = 5;
+  const numbers = new Array(25).fill(0);
+  numbers[0] = 1;
+  numbers[4] = 2;
+  numbers[24] = 3;
+  const hWalls = new Array(20).fill(false);
+  const vWalls = new Array(20).fill(false);
+
+  // Drawn line: 0 -> 1 -> 2 -> 7 -> 6 -> 5 (head = 5, prev = 6, older cells = 0,1,2,7)
+  const path = [0, 1, 2, 7, 6, 5];
+
+  // Touching older cell 0 (start of line) during move MUST NOT reset path
+  const touchStartMove = applyZipCellInteraction(path, 0, 'move', size, numbers, hWalls, vWalls);
+  assert.equal(touchStartMove.changed, false);
+  assert.equal(touchStartMove.action, 'blocked-line');
+  assert.deepEqual(touchStartMove.path, path);
+
+  // Touching older cell 1 on pointerdown MUST NOT trim path
+  const touchOldStart = applyZipCellInteraction(path, 1, 'start', size, numbers, hWalls, vWalls);
+  assert.equal(touchOldStart.changed, false);
+  assert.equal(touchOldStart.action, 'blocked-line');
+  assert.deepEqual(touchOldStart.path, path);
+
+  // Sliding back exactly 1 cell onto path[length - 2] (cell 6) smoothly backtracks by 1
+  const backtrackOne = applyZipCellInteraction(path, 6, 'move', size, numbers, hWalls, vWalls);
+  assert.equal(backtrackOne.changed, true);
+  assert.equal(backtrackOne.action, 'backtrack');
+  assert.deepEqual(backtrackOne.path, [0, 1, 2, 7, 6]);
+
+  // Stepping onto legal neighbor of head (cell 10) extends cleanly
+  const stepForward = applyZipCellInteraction(path, 10, 'move', size, numbers, hWalls, vWalls);
+  assert.equal(stepForward.changed, true);
+  assert.equal(stepForward.action, 'step');
+  assert.deepEqual(stepForward.path, [...path, 10]);
+
+  // Wall blocks move and keeps path stopped at head without resetting
+  vWalls[5] = true; // wall between 5 (r=1,c=0) and 10 (r=2,c=0)
+  const wallBlocked = applyZipCellInteraction(path, 10, 'move', size, numbers, hWalls, vWalls);
+  assert.equal(wallBlocked.changed, false);
+  assert.equal(wallBlocked.action, 'blocked');
+  assert.deepEqual(wallBlocked.path, path);
+});
+
+test('simple Zip mode generates wall-free puzzles, accepts partial-grid completion, and provides BFS hints', () => {
+  for (const size of [5, 6, 7] as ZipBoardSize[]) {
+    const puzzle = generateZipPuzzle(size, 'simple');
+    assert.equal(puzzle.mode, 'simple');
+    assert.equal(puzzle.horizontalWalls.some(Boolean), false, 'Simple mode must have zero horizontal walls');
+    assert.equal(puzzle.verticalWalls.some(Boolean), false, 'Simple mode must have zero vertical walls');
+    assert.equal(
+      isZipCompleted(
+        puzzle.solutionPath,
+        size,
+        puzzle.numbers,
+        puzzle.maxNumber,
+        puzzle.horizontalWalls,
+        puzzle.verticalWalls,
+        'simple'
+      ),
+      true
+    );
+  }
+
+  // Synthetic 5x5 simple completion without visiting all 25 cells: 1 at 0, 2 at 2, 3 at 4
+  const nums = new Array(25).fill(0);
+  nums[0] = 1;
+  nums[2] = 2;
+  nums[4] = 3;
+  const hW = new Array(20).fill(false);
+  const vW = new Array(20).fill(false);
+
+  // Short path [0,1,2,3,4] completes in 'simple' mode, but NOT in 'classic' mode
+  assert.equal(isZipCompleted([0, 1, 2, 3, 4], 5, nums, 3, hW, vW, 'simple'), true);
+  assert.equal(isZipCompleted([0, 1, 2, 3, 4], 5, nums, 3, hW, vW, 'classic'), false);
+
+  // Out-of-order or incomplete path fails in 'simple' mode
+  assert.equal(isZipCompleted([0, 1, 2], 5, nums, 3, hW, vW, 'simple'), false);
+
+  // Simple mode BFS hint navigates cleanly toward #2 even if player diverged from solutionPath
+  const hint = getZipHint([0, 5], [0, 1, 2, 3, 4], {
+    mode: 'simple',
+    size: 5,
+    numbers: nums,
+    maxNumber: 3,
+    horizontalWalls: hW,
+    verticalWalls: vW,
+  });
+  assert.ok(hint && hint.type === 'next', 'Expected a forward BFS hint in simple mode');
 });
 
 test('standalone public/minisudoku.html Zip JS parses cleanly and generates unique puzzles', () => {

@@ -4,6 +4,7 @@ import { MahjongTheme, MahjongTile as MahjongTileModel } from '../types/mahjong'
 interface MahjongTileProps {
   tile: MahjongTileModel;
   theme: MahjongTheme;
+  viewAngle?: '3d' | 'flat';
   isFree: boolean;
   isSelected: boolean;
   isHinted: boolean;
@@ -866,6 +867,7 @@ function renderFairytaleGlyph(tile: MahjongTileModel) {
 export const MahjongTile: React.FC<MahjongTileProps> = ({
   tile,
   theme,
+  viewAngle = '3d',
   isFree,
   isSelected,
   isHinted,
@@ -881,7 +883,12 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
 
   const isComic = theme === 'comic';
   const isFairytale = theme === 'fairytale';
-  const zIndex = tile.z * 100 + Math.round(tile.y) * 2 + (isSelected ? 50 : 0);
+  const is3D = viewAngle === '3d';
+  const z = tile.z;
+
+  // Painter's algorithm: higher z on top; within same layer, bottom-right tiles draw above
+  // top-left tiles so adjacent bricks naturally hide interior 3D extruded walls.
+  const zIndex = z * 600 + Math.round(tile.y) * 24 + Math.round(tile.x) + (isSelected ? 120 : 0);
 
   const cornerColor =
     tile.def.suit === 'chars' || (tile.def.suit === 'dragons' && tile.def.rank === 1)
@@ -894,29 +901,88 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
             ? 'text-amber-800'
             : 'text-slate-800';
 
+  // Subtle top-face brightness progression by layer so higher stacks pop visually
+  const faceBg = isSelected
+    ? isComic
+      ? '#fef08a'
+      : isFairytale
+        ? '#fef3c7'
+        : '#fffbeb'
+    : isHinted
+      ? isComic
+        ? '#cffafe'
+        : '#ecfeff'
+      : !isFree
+        ? isComic
+          ? ['#cfc8b8', '#d8d2c3', '#e0dacd', '#e8e3d8', '#efebe2'][Math.min(z, 4)]
+          : isFairytale
+            ? ['#dcd2c0', '#e3dac8', '#eae2d2', '#f1eadc', '#f6f1e6'][Math.min(z, 4)]
+            : ['#e1d9c6', '#e8e1cf', '#efe9d9', '#f5f0e3', '#faf6ec'][Math.min(z, 4)]
+        : isComic
+          ? ['#f7f3e3', '#faf7ea', '#fdfbf2', '#fffef8', '#ffffff'][Math.min(z, 4)]
+          : isFairytale
+            ? ['#f9f0dc', '#fbf4e4', '#fdf8ec', '#fffbf4', '#fffefa'][Math.min(z, 4)]
+            : ['#f6f1e3', '#faf6eb', '#fdfbf3', '#fffef9', '#ffffff'][Math.min(z, 4)];
+
+  // Rich 3D extruded bottom-right block walls + layer-elevated cast shadow
+  const shadowBlur = 6 + z * 2.5;
+  const castX = 6 + z * 1.4;
+  const castY = 8 + z * 2.2;
+  const castAlpha = Math.min(0.52, 0.30 + z * 0.055);
+
+  const boxShadow = is3D
+    ? isComic
+      ? isSelected
+        ? `inset 1px 1px 0 rgba(255,255,255,0.8), 1.5px 2px 0 #fde047, 3px 4px 0 #f59e0b, 4.5px 6px 0 #0f172a, ${castX + 2}px ${castY + 3}px ${shadowBlur + 2}px rgba(15,23,42,0.45)`
+        : isFree
+          ? `inset 1px 1px 0 rgba(255,255,255,0.85), 1.5px 2px 0 #fde68a, 3px 4px 0 #d97706, 4.5px 6px 0 #0f172a, ${castX}px ${castY}px ${shadowBlur}px rgba(15,23,42,${castAlpha})`
+          : `inset 1px 1px 0 rgba(255,255,255,0.45), 1.5px 2px 0 #cbd5e1, 3px 4px 0 #64748b, 4.5px 6px 0 #1e293b, ${castX}px ${castY}px ${shadowBlur}px rgba(15,23,42,${castAlpha})`
+      : isFairytale
+        ? isSelected
+          ? `inset 1px 1px 0 rgba(255,255,255,0.9), 1.2px 1.6px 0 #fcd34d, 2.4px 3.2px 0 #d97706, 3.8px 5px 0 #92400e, 5px 6.6px 0 #451a03, ${castX + 2}px ${castY + 3}px ${shadowBlur + 3}px rgba(24,9,44,0.5)`
+          : isFree
+            ? `inset 1px 1px 0 rgba(255,255,255,0.85), 1.2px 1.6px 0 #e7cfa0, 2.4px 3.2px 0 #b45309, 3.8px 5px 0 #78350f, 5px 6.6px 0 #451a03, ${castX}px ${castY}px ${shadowBlur}px rgba(24,9,44,${castAlpha})`
+            : `inset 1px 1px 0 rgba(255,255,255,0.4), 1.2px 1.6px 0 #c9bda7, 2.4px 3.2px 0 #78716c, 3.8px 5px 0 #57534e, 5px 6.6px 0 #292524, ${castX}px ${castY}px ${shadowBlur}px rgba(20,10,35,${castAlpha})`
+        : isSelected
+          ? `inset 1px 1px 0 rgba(255,255,255,0.95), 1.2px 1.6px 0 #fde68a, 2.4px 3.2px 0 #16a34a, 3.8px 5px 0 #15803d, 5px 6.6px 0 #14532d, ${castX + 2}px ${castY + 3}px ${shadowBlur + 3}px rgba(5,25,18,0.48)`
+          : isFree
+            ? `inset 1px 1px 0 rgba(255,255,255,0.9), 1.2px 1.6px 0 #e2d8be, 2.4px 3.2px 0 #16a34a, 3.8px 5px 0 #15803d, 5px 6.6px 0 #14532d, ${castX}px ${castY}px ${shadowBlur}px rgba(5,25,18,${castAlpha})`
+            : `inset 1px 1px 0 rgba(255,255,255,0.4), 1.2px 1.6px 0 #cfc6b2, 2.4px 3.2px 0 #4b7c65, 3.8px 5px 0 #2d5a46, 5px 6.6px 0 #1b3a2d, ${castX}px ${castY}px ${shadowBlur}px rgba(5,25,18,${castAlpha})`
+    : undefined;
+
   const frameStyleClass = isComic
     ? isSelected
-      ? 'bg-yellow-200 border-2 border-slate-950 ring-2 ring-amber-400 -translate-y-1 shadow-[3px_4px_0px_0px_#0f172a]'
+      ? 'border-2 border-slate-950 ring-2 ring-amber-400 -translate-y-1'
       : isHinted
-        ? 'bg-cyan-100 border-2 border-slate-950 ring-3 ring-cyan-400 shadow-[3px_4px_0px_0px_#0891b2]'
+        ? 'border-2 border-slate-950 ring-3 ring-cyan-400'
         : isFree
-          ? 'bg-[#FFFDF5] border-2 border-slate-950 hover:-translate-y-0.5 cursor-pointer shadow-[2px_3px_0px_0px_#0f172a]'
-          : 'bg-[#D7D2C5] border-2 border-slate-700 cursor-not-allowed brightness-90 shadow-[2px_2px_0px_0px_#334155]'
+          ? 'border-2 border-slate-950 hover:-translate-y-0.5 cursor-pointer'
+          : 'border-2 border-slate-700 cursor-not-allowed brightness-90'
     : isFairytale
       ? isSelected
-        ? 'bg-amber-100 border-2 border-amber-500 ring-2 ring-amber-300 -translate-y-1 shadow-xl'
+        ? 'border-2 border-amber-500 ring-2 ring-amber-300 -translate-y-1'
         : isHinted
-          ? 'bg-cyan-50 border-2 border-cyan-500 ring-3 ring-cyan-400 shadow-xl'
+          ? 'border-2 border-cyan-500 ring-3 ring-cyan-400'
           : isFree
-            ? 'bg-[#FFF9EC] border border-amber-500/80 hover:-translate-y-0.5 cursor-pointer shadow-[2px_3px_0px_0px_#92400e,2px_4px_7px_rgba(30,10,50,0.28)]'
-            : 'bg-[#E4DCCD] border border-stone-500/70 cursor-not-allowed brightness-90 shadow-[2px_3px_0px_0px_#57534e,2px_4px_5px_rgba(0,0,0,0.25)]'
+            ? 'border border-amber-600/80 hover:-translate-y-0.5 cursor-pointer'
+            : 'border border-stone-500/75 cursor-not-allowed brightness-90'
       : isSelected
-        ? 'bg-amber-50 border border-amber-500 ring-2 ring-amber-400 -translate-y-1 shadow-xl'
+        ? 'border border-amber-500 ring-2 ring-amber-400 -translate-y-1'
         : isHinted
-          ? 'bg-cyan-50 border border-cyan-500 ring-3 ring-cyan-400 shadow-xl'
+          ? 'border border-cyan-500 ring-3 ring-cyan-400'
           : isFree
-            ? 'bg-[#FFFDF7] border border-amber-300/90 hover:-translate-y-0.5 cursor-pointer shadow-[2px_3px_0px_0px_#b45309,3px_5px_8px_rgba(0,0,0,0.28)]'
-            : 'bg-[#EBE5D5] border border-stone-400/80 cursor-not-allowed brightness-90 shadow-[2px_3px_0px_0px_#78716c,2px_4px_5px_rgba(0,0,0,0.25)]';
+            ? 'border border-amber-400/90 hover:-translate-y-0.5 cursor-pointer'
+            : 'border border-stone-400/80 cursor-not-allowed brightness-90';
+
+  const flatShadowClass = !is3D
+    ? isComic
+      ? isFree
+        ? 'shadow-[2px_3px_0px_0px_#0f172a]'
+        : 'shadow-[2px_2px_0px_0px_#334155]'
+      : isFree
+        ? 'shadow-[2px_3px_0px_0px_#b45309,3px_5px_8px_rgba(0,0,0,0.28)]'
+        : 'shadow-[2px_3px_0px_0px_#78716c,2px_4px_5px_rgba(0,0,0,0.25)]'
+    : '';
 
   return (
     <button
@@ -930,8 +996,10 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
         width: `${widthPct}%`,
         height: `${heightPct}%`,
         zIndex,
+        backgroundColor: faceBg,
+        boxShadow,
       }}
-      className={`absolute rounded-md sm:rounded-lg transition-transform duration-150 flex items-center justify-center p-0.5 select-none focus-visible:outline-2 focus-visible:outline-amber-400 ${frameStyleClass} ${
+      className={`absolute rounded-md sm:rounded-lg transition-transform duration-150 flex items-center justify-center p-0.5 select-none focus-visible:outline-2 focus-visible:outline-amber-400 ${frameStyleClass} ${flatShadowClass} ${
         isBlockedShake ? 'ring-2 ring-rose-500' : ''
       }`}
     >

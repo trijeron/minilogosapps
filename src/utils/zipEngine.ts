@@ -1,4 +1,4 @@
-import { ZipBoardSize, ZipPuzzle } from '../types/zip';
+import { ZipBoardSize, ZipMode, ZipPuzzle } from '../types/zip';
 
 export function getZipHorizontalWallIndex(r: number, c: number, size: number): number {
   return r * (size - 1) + c;
@@ -432,15 +432,31 @@ function chooseCheckpointsAlongPath(path: number[], size: ZipBoardSize): number[
 }
 
 /**
- * Generates a solvable Zip puzzle with a strictly unique Hamiltonian solution:
- * 1) Random Hamiltonian path across the grid
- * 2) Sequential numbers 1..K along the path
- * 3) Strategic walls outside the path eliminating all alternative solutions
+ * Generates a solvable Zip puzzle:
+ * - 'classic': strictly unique Hamiltonian solution with strategic walls (must visit every cell).
+ * - 'simple': open wall-free grid where the player simply connects 1..K in order without crossing their own line.
  */
-export function generateZipPuzzle(size: ZipBoardSize = 6): ZipPuzzle {
+export function generateZipPuzzle(size: ZipBoardSize = 6, mode: ZipMode = 'classic'): ZipPuzzle {
   const total = size * size;
   const hLen = size * (size - 1);
   const vLen = (size - 1) * size;
+
+  if (mode === 'simple') {
+    const solutionPath = generateRandomHamiltonianPath(size);
+    const numbers = chooseCheckpointsAlongPath(solutionPath, size);
+    const horizontalWalls = new Array(hLen).fill(false);
+    const verticalWalls = new Array(vLen).fill(false);
+    return {
+      size,
+      mode: 'simple',
+      numbers,
+      maxNumber: Math.max(...numbers),
+      horizontalWalls,
+      verticalWalls,
+      solutionPath,
+    };
+  }
+
   const maxAllowedWalls = size === 5 ? 10 : size === 6 ? 13 : 16;
 
   for (let attempt = 0; attempt < 40; attempt++) {
@@ -577,6 +593,7 @@ export function generateZipPuzzle(size: ZipBoardSize = 6): ZipPuzzle {
       const maxNumber = Math.max(...numbers);
       return {
         size,
+        mode: 'classic',
         numbers,
         maxNumber,
         horizontalWalls,
@@ -610,6 +627,7 @@ export function generateZipPuzzle(size: ZipBoardSize = 6): ZipPuzzle {
   }
   return {
     size,
+    mode: 'classic',
     numbers,
     maxNumber: Math.max(...numbers),
     horizontalWalls,
@@ -663,8 +681,101 @@ export function canStepZipPath(
   return { ok: true };
 }
 
+export interface ZipInteractionResult {
+  changed: boolean;
+  path: number[];
+  action: 'step' | 'backtrack' | 'head' | 'blocked-line' | 'blocked' | 'noop';
+  reason?: string;
+}
+
+/**
+ * Resolves pointer start/move interaction without ever cutting or resetting older segments
+ * of the drawn path when the player accidentally touches an earlier part of the line.
+ * - Stepping onto the immediately preceding cell (`path.length - 2`) cleanly backtracks 1 cell.
+ * - Touching any older cell in `path` (`< path.length - 2`) stops safely at the last valid cell.
+ */
+export function applyZipCellInteraction(
+  path: number[],
+  targetCell: number,
+  interactionType: 'start' | 'move',
+  size: number,
+  numbers: number[],
+  horizontalWalls: boolean[],
+  verticalWalls: boolean[]
+): ZipInteractionResult {
+  if (path.length === 0) {
+    if (numbers[targetCell] === 1) {
+      return { changed: true, path: [targetCell], action: 'step' };
+    }
+    return { changed: false, path, action: 'blocked', reason: 'Začněte na čísle 1.' };
+  }
+
+  const existingIdx = path.indexOf(targetCell);
+  if (existingIdx !== -1) {
+    if (existingIdx === path.length - 1) {
+      return { changed: false, path, action: 'head' };
+    }
+    if (existingIdx === path.length - 2) {
+      return { changed: true, path: path.slice(0, -1), action: 'backtrack' };
+    }
+    // Never trim/reset older segments of the line — simply stay stopped at the last valid cell
+    return { changed: false, path, action: 'blocked-line' };
+  }
+
+  const head = path[path.length - 1];
+  if (areOrthogonalNeighbors(head, targetCell, size)) {
+    const check = canStepZipPath(path, targetCell, size, numbers, horizontalWalls, verticalWalls);
+    if (check.ok) {
+      return { changed: true, path: [...path, targetCell], action: 'step' };
+    }
+    return { changed: false, path, action: 'blocked', reason: check.reason };
+  }
+
+  // Fast pointer sweep across 2 steps: bridge only if unambiguous single legal intermediate cell exists
+  if (interactionType === 'move') {
+    const r1 = Math.floor(head / size);
+    const c1 = head % size;
+    const r2 = Math.floor(targetCell / size);
+    const c2 = targetCell % size;
+    if (Math.abs(r1 - r2) + Math.abs(c1 - c2) === 2) {
+      const candidates: number[] = [];
+      if (r1 === r2) {
+        candidates.push(r1 * size + (c1 + c2) / 2);
+      } else if (c1 === c2) {
+        candidates.push(((r1 + r2) / 2) * size + c1);
+      } else {
+        candidates.push(r1 * size + c2);
+        candidates.push(r2 * size + c1);
+      }
+
+      const validBridges: number[] = [];
+      for (const mid of candidates) {
+        const step1 = canStepZipPath(path, mid, size, numbers, horizontalWalls, verticalWalls);
+        if (!step1.ok) continue;
+        const step2 = canStepZipPath(
+          [...path, mid],
+          targetCell,
+          size,
+          numbers,
+          horizontalWalls,
+          verticalWalls
+        );
+        if (step2.ok) validBridges.push(mid);
+      }
+
+      if (validBridges.length === 1) {
+        return { changed: true, path: [...path, validBridges[0], targetCell], action: 'step' };
+      }
+    }
+  }
+
+  return { changed: false, path, action: 'noop' };
+}
+
 /**
  * Checks if a drawn path completes the Zip puzzle cleanly.
+ * - 'classic': visits every single cell once, respects walls, connects 1..maxNumber in order.
+ * - 'simple': connects 1..maxNumber in order without crossing its own line (empty cells may remain).
  */
 export function isZipCompleted(
   path: number[],
@@ -672,19 +783,24 @@ export function isZipCompleted(
   numbers: number[],
   maxNumber: number,
   horizontalWalls: boolean[],
-  verticalWalls: boolean[]
+  verticalWalls: boolean[],
+  mode: ZipMode = 'classic'
 ): boolean {
   const total = size * size;
-  if (path.length !== total) return false;
+  if (mode === 'classic') {
+    if (path.length !== total) return false;
+  } else {
+    if (path.length < maxNumber || path.length > total) return false;
+  }
 
   const seen = new Set(path);
-  if (seen.size !== total) return false;
+  if (seen.size !== path.length) return false;
 
   if (numbers[path[0]] !== 1) return false;
-  if (numbers[path[total - 1]] !== maxNumber) return false;
+  if (numbers[path[path.length - 1]] !== maxNumber) return false;
 
   let nextExpected = 2;
-  for (let i = 0; i < total; i++) {
+  for (let i = 0; i < path.length; i++) {
     const cell = path[i];
     if (i > 0) {
       const prev = path[i - 1];
@@ -700,15 +816,111 @@ export function isZipCompleted(
   return nextExpected === maxNumber + 1;
 }
 
+function findShortestSimpleStep(
+  path: number[],
+  size: number,
+  numbers: number[],
+  maxNumber: number,
+  horizontalWalls: boolean[],
+  verticalWalls: boolean[]
+): number | null {
+  if (path.length === 0) {
+    const startIdx = numbers.indexOf(1);
+    return startIdx !== -1 ? startIdx : null;
+  }
+  const nextNum = getNextExpectedZipNumber(path, numbers);
+  if (nextNum > maxNumber) return null;
+  const targetIdx = numbers.indexOf(nextNum);
+  if (targetIdx === -1) return null;
+
+  const head = path[path.length - 1];
+  const blocked = new Set(path);
+  const queue: number[] = [head];
+  const parent = new Map<number, number>();
+  parent.set(head, -1);
+
+  while (queue.length > 0) {
+    const u = queue.shift()!;
+    if (u === targetIdx) {
+      let cur = u;
+      while (parent.get(cur) !== head && parent.get(cur) !== -1) {
+        cur = parent.get(cur)!;
+      }
+      return cur;
+    }
+    for (const v of getGridNeighbors(u, size)) {
+      if (parent.has(v)) continue;
+      if (blocked.has(v)) continue;
+      if (hasZipWallBetween(u, v, size, horizontalWalls, verticalWalls)) continue;
+      const nv = numbers[v];
+      if (nv > 0 && nv !== nextNum) continue;
+      parent.set(v, u);
+      queue.push(v);
+    }
+  }
+  return null;
+}
+
+export interface ZipHintOptions {
+  mode?: ZipMode;
+  size?: number;
+  numbers?: number[];
+  maxNumber?: number;
+  horizontalWalls?: boolean[];
+  verticalWalls?: boolean[];
+}
+
 /**
  * Computes hint action:
- * - If current path matches prefix of unique solutionPath -> returns next cell to visit.
- * - If player branched away from unique solutionPath -> returns backtrackCell (last matching cell).
+ * - In 'classic' mode: follows unique solutionPath (returns next cell or backtrackCell if diverged).
+ * - In 'simple' mode: finds shortest legal step to next checkpoint via BFS, or backtracks only if trapped.
  */
 export function getZipHint(
   path: number[],
-  solutionPath: number[]
+  solutionPath: number[],
+  options?: ZipHintOptions
 ): { type: 'next'; targetCell: number } | { type: 'backtrack'; backtrackCell: number; divergedIndex: number } | null {
+  if (
+    options?.mode === 'simple' &&
+    options.size &&
+    options.numbers &&
+    options.maxNumber &&
+    options.horizontalWalls &&
+    options.verticalWalls
+  ) {
+    const nextStep = findShortestSimpleStep(
+      path,
+      options.size,
+      options.numbers,
+      options.maxNumber,
+      options.horizontalWalls,
+      options.verticalWalls
+    );
+    if (nextStep !== null) {
+      return { type: 'next', targetCell: nextStep };
+    }
+    // Trapped: find latest prefix from which next number is reachable
+    for (let len = path.length - 1; len >= 1; len--) {
+      const prefix = path.slice(0, len);
+      const step = findShortestSimpleStep(
+        prefix,
+        options.size,
+        options.numbers,
+        options.maxNumber,
+        options.horizontalWalls,
+        options.verticalWalls
+      );
+      if (step !== null) {
+        return {
+          type: 'backtrack',
+          backtrackCell: prefix[prefix.length - 1],
+          divergedIndex: len,
+        };
+      }
+    }
+    return path.length > 0 ? { type: 'backtrack', backtrackCell: path[0], divergedIndex: 1 } : null;
+  }
+
   if (solutionPath.length === 0) return null;
   if (path.length === 0) return { type: 'next', targetCell: solutionPath[0] };
 

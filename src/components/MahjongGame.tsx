@@ -15,6 +15,7 @@ import {
   ZoomIn,
   ZoomOut,
   X,
+  Layers,
 } from 'lucide-react';
 import {
   MahjongLayoutId,
@@ -39,14 +40,17 @@ import { MahjongRulesModal } from './MahjongRulesModal';
 import { formatTime } from '../utils/format';
 import { sound } from '../utils/audio';
 import {
+  MahjongViewAngle,
   clearMahjongSavedState,
   loadMahjongBestTimes,
   loadMahjongStateFromStorage,
   loadMahjongTheme,
+  loadMahjongViewAngle,
   loadMahjongZoom,
   saveMahjongBestTime,
   saveMahjongStateToStorage,
   saveMahjongTheme,
+  saveMahjongViewAngle,
   saveMahjongZoom,
 } from '../utils/storage';
 import { GameTab } from './Header';
@@ -84,17 +88,38 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
 
   const [bestTimes, setBestTimes] = useState(loadMahjongBestTimes);
   const [theme, setTheme] = useState<MahjongTheme>(loadMahjongTheme);
+  const [viewAngle, setViewAngle] = useState<MahjongViewAngle>(loadMahjongViewAngle);
   const [zoomPct, setZoomPct] = useState<number>(loadMahjongZoom);
   const [isNewBest, setIsNewBest] = useState<boolean>(false);
   const [showVictory, setShowVictory] = useState<boolean>(false);
   const [showRules, setShowRules] = useState<boolean>(false);
 
   const noteTimerRef = useRef<number | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const centerBoardScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    window.requestAnimationFrame(() => {
+      if (el.scrollWidth > el.clientWidth) {
+        el.scrollLeft = Math.round((el.scrollWidth - el.clientWidth) / 2);
+      }
+      if (el.scrollHeight > el.clientHeight) {
+        el.scrollTop = Math.round((el.scrollHeight - el.clientHeight) / 2);
+      }
+    });
+  }, []);
 
   const handleZoomChange = (nextPct: number) => {
     const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(nextPct)));
     setZoomPct(clamped);
     saveMahjongZoom(clamped);
+  };
+
+  const handleToggleViewAngle = () => {
+    const next: MahjongViewAngle = viewAngle === '3d' ? 'flat' : '3d';
+    setViewAngle(next);
+    saveMahjongViewAngle(next);
   };
 
   const showTempNote = useCallback((msg: string) => {
@@ -201,21 +226,44 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
   const availablePairs = useMemo(() => findMatchingPairs(tiles), [tiles]);
   const isDeadlocked = remainingCount > 0 && availablePairs.length === 0;
 
-  // Board geometry bounds
+  // Center scrollable mat when switching layouts or starting zoomed on mobile
+  useEffect(() => {
+    if (tiles.length === 0) return;
+    centerBoardScroll();
+  }, [layout, centerBoardScroll, tiles.length > 0]);
+
+  // Board geometry bounds with side-angled 3D layer projection
   const boardMetrics = useMemo(() => {
     const slots = getLayoutSlots(layout);
     let maxX = 0;
     let maxY = 0;
+    let maxZ = 0;
     for (const s of slots) {
       if (s.x + 2 > maxX) maxX = s.x + 2;
       if (s.y + 2 > maxY) maxY = s.y + 2;
+      if (s.z > maxZ) maxZ = s.z;
     }
-    const padX = 1.2;
-    const padY = 1.2;
-    const totalW = maxX + padX * 2;
-    const totalH = maxY + padY * 2;
-    return { padX, padY, totalW, totalH };
-  }, [layout]);
+    const zShiftUnitsX = viewAngle === '3d' ? 0.30 : 0.10;
+    const zShiftUnitsY = viewAngle === '3d' ? 0.38 : 0.10;
+    const padLeft = 0.85 + maxZ * zShiftUnitsX;
+    const padTop = 0.85 + maxZ * zShiftUnitsY;
+    const padRight = viewAngle === '3d' ? 1.45 : 1.1;
+    const padBottom = viewAngle === '3d' ? 1.65 : 1.1;
+    const totalW = maxX + padLeft + padRight;
+    const totalH = maxY + padTop + padBottom;
+    // Authentic upright Mahjong tile proportion (~1 : 1.24), making mobile boards taller and easier to tap
+    const tileRatioY = viewAngle === '3d' ? 1.24 : 1.14;
+    const aspectRatio = totalW / (totalH * tileRatioY);
+    return {
+      padLeft,
+      padTop,
+      totalW,
+      totalH,
+      zShiftUnitsX,
+      zShiftUnitsY,
+      aspectRatio,
+    };
+  }, [layout, viewAngle]);
 
   const handleTileClick = (tile: MahjongTileModel) => {
     if (isPaused || isCompleted || tile.removed) return;
@@ -501,8 +549,8 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
         </div>
       )}
 
-      {/* Top Zoom Slider Bar */}
-      <div className="w-full flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200/90 rounded-xl">
+      {/* Top Zoom & 3D Angle Bar */}
+      <div className="w-full flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-50 border border-slate-200/90 rounded-xl">
         <button
           type="button"
           onClick={() => handleZoomChange(zoomPct - ZOOM_STEP)}
@@ -522,7 +570,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           value={zoomPct}
           onChange={(e) => handleZoomChange(Number(e.target.value))}
           aria-label="Přiblížení desky"
-          className="flex-1 h-2 bg-slate-200 rounded-lg accent-emerald-700 cursor-pointer"
+          className="flex-1 min-w-[60px] h-2 bg-slate-200 rounded-lg accent-emerald-700 cursor-pointer"
         />
 
         <button
@@ -538,11 +586,25 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
 
         <button
           type="button"
-          onClick={() => handleZoomChange(100)}
-          title="Vrátit velikost na 100 %"
-          className="px-2.5 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-800 tabular-nums min-w-[52px] shrink-0"
+          onClick={() => handleZoomChange(zoomPct === 100 ? 150 : 100)}
+          title="Přepnout velikost 100 % / 150 %"
+          className="px-2 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-800 tabular-nums min-w-[46px] shrink-0"
         >
           {zoomPct}%
+        </button>
+
+        <button
+          type="button"
+          onClick={handleToggleViewAngle}
+          title={viewAngle === '3d' ? 'Přepnout na plochý pohled shora' : 'Přepnout na 3D šikmý pohled vrstev'}
+          className={`px-2.5 h-8 rounded-lg border text-xs font-bold flex items-center gap-1 active:scale-95 transition-all shrink-0 ${
+            viewAngle === '3d'
+              ? 'bg-emerald-700 border-emerald-800 text-white shadow-2xs'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>{viewAngle === '3d' ? '3D' : '2D'}</span>
         </button>
       </div>
 
@@ -563,7 +625,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
         </div>
       )}
 
-      {/* Layered Mahjong Felt Mat (with Zoom & Pan) */}
+      {/* Layered Mahjong Felt Mat (with Side-Angled 3D Stacks, Zoom & Pan) */}
       <div
         className={`relative z-0 isolate w-full rounded-2xl border-4 shadow-inner overflow-hidden ${
           theme === 'comic'
@@ -581,32 +643,38 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
                 : '#214d3d',
           backgroundImage:
             theme === 'comic'
-              ? 'radial-gradient(rgba(15, 23, 42, 0.22) 1.5px, transparent 1.5px)'
+              ? 'radial-gradient(rgba(15, 23, 42, 0.22) 1.5px, transparent 1.5px), linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.22) 100%)'
               : theme === 'fairytale'
-                ? 'radial-gradient(rgba(253, 230, 138, 0.24) 1.2px, transparent 1.2px)'
-                : undefined,
+                ? 'radial-gradient(rgba(253, 230, 138, 0.22) 1.2px, transparent 1.2px), linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(10,4,25,0.3) 100%)'
+                : 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.25) 100%)',
           backgroundSize:
             theme === 'comic'
-              ? '14px 14px'
+              ? '14px 14px, 100% 100%'
               : theme === 'fairytale'
-                ? '18px 18px'
-                : undefined,
+                ? '18px 18px, 100% 100%'
+                : '100% 100%',
         }}
       >
-        <div className="w-full overflow-auto max-h-[70vh] sm:max-h-[75vh] touch-pan-x touch-pan-y">
+        <div
+          ref={scrollContainerRef}
+          className="w-full overflow-auto max-h-[68vh] sm:max-h-[75vh] touch-pan-x touch-pan-y"
+        >
           <div
             className={`relative ${zoomPct <= 100 ? 'mx-auto' : ''}`}
             style={{
               width: `${zoomPct}%`,
-              aspectRatio: layout === 'turtle' ? '16 / 10' : '16 / 11',
+              aspectRatio: `${boardMetrics.aspectRatio.toFixed(4)}`,
             }}
           >
             {orderedTiles.map((tile) => {
-              const zShift = tile.z * 0.45;
               const leftPct =
-                ((tile.x + boardMetrics.padX) / boardMetrics.totalW) * 100 - zShift;
+                ((tile.x + boardMetrics.padLeft - tile.z * boardMetrics.zShiftUnitsX) /
+                  boardMetrics.totalW) *
+                100;
               const topPct =
-                ((tile.y + boardMetrics.padY) / boardMetrics.totalH) * 100 - zShift;
+                ((tile.y + boardMetrics.padTop - tile.z * boardMetrics.zShiftUnitsY) /
+                  boardMetrics.totalH) *
+                100;
               const widthPct = (1.92 / boardMetrics.totalW) * 100;
               const heightPct = (1.92 / boardMetrics.totalH) * 100;
 
@@ -615,6 +683,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
                   key={tile.uid}
                   tile={tile}
                   theme={theme}
+                  viewAngle={viewAngle}
                   isFree={freeUids.has(tile.uid)}
                   isSelected={selectedUid === tile.uid}
                   isHinted={hintUids.includes(tile.uid)}
@@ -633,7 +702,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
 
         {/* Frosted Pause Overlay */}
         {isPaused && (
-          <div className="absolute inset-0 z-[600] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
+          <div className="absolute inset-0 z-[4000] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
             <h3 className="text-base font-bold mb-1">Časomíra pozastavena</h3>
             <p className="text-xs text-slate-300 mb-4 max-w-xs">
               Kameny jsou během pauzy skryté.

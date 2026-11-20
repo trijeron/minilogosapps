@@ -340,24 +340,52 @@ export function saveMahjongTheme(theme: MahjongTheme): void {
 }
 
 const MAHJONG_ZOOM_KEY = 'mahjong_zoom_v1';
+const MAHJONG_VIEW_ANGLE_KEY = 'mahjong_view_angle_v1';
+
+export type MahjongViewAngle = '3d' | 'flat';
+
+export function getDefaultMahjongZoom(): number {
+  if (typeof window !== 'undefined' && window.innerWidth < 640) {
+    return 145;
+  }
+  return 100;
+}
 
 export function loadMahjongZoom(): number {
   try {
     const raw = sessionStorage.getItem(MAHJONG_ZOOM_KEY);
-    if (!raw) return 100;
+    if (!raw) return getDefaultMahjongZoom();
     const val = Number(raw);
-    if (Number.isNaN(val)) return 100;
+    if (Number.isNaN(val)) return getDefaultMahjongZoom();
     const pct = val <= 3 ? Math.round(val * 100) : Math.round(val);
     if (pct >= 75 && pct <= 250) return pct;
   } catch {
     // ignore
   }
-  return 100;
+  return getDefaultMahjongZoom();
 }
 
 export function saveMahjongZoom(zoomPct: number): void {
   try {
     sessionStorage.setItem(MAHJONG_ZOOM_KEY, String(zoomPct));
+  } catch {
+    // ignore
+  }
+}
+
+export function loadMahjongViewAngle(): MahjongViewAngle {
+  try {
+    const raw = sessionStorage.getItem(MAHJONG_VIEW_ANGLE_KEY);
+    if (raw === '3d' || raw === 'flat') return raw;
+  } catch {
+    // ignore
+  }
+  return '3d';
+}
+
+export function saveMahjongViewAngle(angle: MahjongViewAngle): void {
+  try {
+    sessionStorage.setItem(MAHJONG_VIEW_ANGLE_KEY, angle);
   } catch {
     // ignore
   }
@@ -428,10 +456,13 @@ export function clearZipSavedState(): void {
   }
 }
 
-export function loadZipBestTimes(): ZipBestTimes {
+const ZIP_SIMPLE_BEST_TIMES_KEY = 'zip_simple_best_times_v1';
+
+export function loadZipBestTimes(mode: 'classic' | 'simple' = 'classic'): ZipBestTimes {
   const defaults: ZipBestTimes = { 5: null, 6: null, 7: null };
+  const key = mode === 'simple' ? ZIP_SIMPLE_BEST_TIMES_KEY : ZIP_BEST_TIMES_KEY;
   try {
-    const raw = sessionStorage.getItem(ZIP_BEST_TIMES_KEY);
+    const raw = sessionStorage.getItem(key);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw);
     return {
@@ -444,13 +475,18 @@ export function loadZipBestTimes(): ZipBestTimes {
   }
 }
 
-export function saveZipBestTime(size: 5 | 6 | 7, seconds: number): ZipBestTimes {
-  const current = loadZipBestTimes();
+export function saveZipBestTime(
+  size: 5 | 6 | 7,
+  seconds: number,
+  mode: 'classic' | 'simple' = 'classic'
+): ZipBestTimes {
+  const current = loadZipBestTimes(mode);
+  const key = mode === 'simple' ? ZIP_SIMPLE_BEST_TIMES_KEY : ZIP_BEST_TIMES_KEY;
   const prev = current[size];
   if (prev === null || seconds < prev) {
     current[size] = seconds;
     try {
-      sessionStorage.setItem(ZIP_BEST_TIMES_KEY, JSON.stringify(current));
+      sessionStorage.setItem(key, JSON.stringify(current));
     } catch {
       // ignore
     }

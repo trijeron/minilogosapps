@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Undo2, RotateCcw, Lightbulb } from 'lucide-react';
-import { ZipBoardSize, ZipBestTimes } from '../types/zip';
+import { ZipBoardSize, ZipBestTimes, ZipMode } from '../types/zip';
 import {
   generateZipPuzzle,
   getNextExpectedZipNumber,
-  canStepZipPath,
+  applyZipCellInteraction,
   isZipCompleted,
   getZipHint,
-  areOrthogonalNeighbors,
 } from '../utils/zipEngine';
 import { GameInfoBar } from './GameInfoBar';
 import { ZipGrid } from './ZipGrid';
@@ -38,6 +37,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
   externalPaused = false,
 }) => {
   const [boardSize, setBoardSize] = useState<ZipBoardSize>(6);
+  const [mode, setMode] = useState<ZipMode>('classic');
   const [numbers, setNumbers] = useState<number[]>([]);
   const [maxNumber, setMaxNumber] = useState<number>(2);
   const [horizontalWalls, setHorizontalWalls] = useState<boolean[]>([]);
@@ -57,12 +57,13 @@ export const ZipGame: React.FC<ZipGameProps> = ({
   const [blockedFeedbackCell, setBlockedFeedbackCell] = useState<number | null>(null);
 
   // Modals & records
-  const [bestTimes, setBestTimes] = useState<ZipBestTimes>(() => loadZipBestTimes());
+  const [bestTimes, setBestTimes] = useState<ZipBestTimes>(() => loadZipBestTimes('classic'));
   const [showVictory, setShowVictory] = useState<boolean>(false);
   const [isNewBest, setIsNewBest] = useState<boolean>(false);
   const [showRules, setShowRules] = useState<boolean>(false);
   const [showNewGameConfirm, setShowNewGameConfirm] = useState<boolean>(false);
   const [pendingSize, setPendingSize] = useState<ZipBoardSize | null>(null);
+  const [pendingMode, setPendingMode] = useState<ZipMode | null>(null);
 
   const dragSnapshotRef = useRef<number[] | null>(null);
   const dragChangedRef = useRef<boolean>(false);
@@ -85,13 +86,15 @@ export const ZipGame: React.FC<ZipGameProps> = ({
   }, [clearTimers]);
 
   const startNewGame = useCallback(
-    (size: ZipBoardSize) => {
+    (size: ZipBoardSize, targetMode: ZipMode = mode) => {
       clearTimers();
-      const puzzle = generateZipPuzzle(size);
+      const puzzle = generateZipPuzzle(size, targetMode);
       const startCell = puzzle.solutionPath[0];
       const initialPath = [startCell];
 
       setBoardSize(size);
+      setMode(targetMode);
+      setBestTimes(loadZipBestTimes(targetMode));
       setNumbers(puzzle.numbers);
       setMaxNumber(puzzle.maxNumber);
       setHorizontalWalls(puzzle.horizontalWalls);
@@ -110,9 +113,11 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       setShowVictory(false);
       setIsNewBest(false);
       setPendingSize(null);
+      setPendingMode(null);
 
       saveZipStateToStorage({
         size,
+        mode: targetMode,
         numbers: puzzle.numbers,
         maxNumber: puzzle.maxNumber,
         horizontalWalls: puzzle.horizontalWalls,
@@ -125,14 +130,17 @@ export const ZipGame: React.FC<ZipGameProps> = ({
         hintsUsed: 0,
       });
     },
-    [clearTimers]
+    [clearTimers, mode]
   );
 
   // Initial load
   useEffect(() => {
     const saved = loadZipStateFromStorage();
     if (saved && !saved.isCompleted) {
+      const savedMode: ZipMode = saved.mode === 'simple' ? 'simple' : 'classic';
       setBoardSize(saved.size);
+      setMode(savedMode);
+      setBestTimes(loadZipBestTimes(savedMode));
       setNumbers(saved.numbers);
       setMaxNumber(saved.maxNumber);
       setHorizontalWalls(saved.horizontalWalls);
@@ -144,9 +152,10 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       setIsCompleted(false);
       setHintsUsed(saved.hintsUsed || 0);
     } else {
-      startNewGame(6);
+      startNewGame(6, 'classic');
     }
-  }, [startNewGame]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Autosave
   useEffect(() => {
@@ -154,6 +163,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
     if (numbers.length === total && solutionPath.length === total) {
       saveZipStateToStorage({
         size: boardSize,
+        mode,
         numbers,
         maxNumber,
         horizontalWalls,
@@ -168,6 +178,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
     }
   }, [
     boardSize,
+    mode,
     numbers,
     maxNumber,
     horizontalWalls,
@@ -206,10 +217,11 @@ export const ZipGame: React.FC<ZipGameProps> = ({
 
   const totalCells = boardSize * boardSize;
   const reachedLastEarly = useMemo(() => {
+    if (mode === 'simple') return false;
     if (path.length === 0 || path.length >= totalCells) return false;
     const head = path[path.length - 1];
     return numbers[head] === maxNumber;
-  }, [path, totalCells, numbers, maxNumber]);
+  }, [mode, path, totalCells, numbers, maxNumber]);
 
   const showTransientFeedback = useCallback((msg: string, cellIdx: number) => {
     setStatusNote(msg);
@@ -231,7 +243,8 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           numbers,
           maxNumber,
           horizontalWalls,
-          verticalWalls
+          verticalWalls,
+          mode
         )
       ) {
         setIsCompleted(true);
@@ -244,7 +257,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
         const prevBest = bestTimes[boardSize];
         const isRecord = prevBest === null || elapsedSeconds < prevBest;
         if (isRecord) {
-          const updated = saveZipBestTime(boardSize, elapsedSeconds);
+          const updated = saveZipBestTime(boardSize, elapsedSeconds, mode);
           setBestTimes(updated);
           setIsNewBest(true);
         } else {
@@ -258,7 +271,17 @@ export const ZipGame: React.FC<ZipGameProps> = ({
         onGameCompleted?.();
       }
     },
-    [boardSize, numbers, maxNumber, horizontalWalls, verticalWalls, bestTimes, elapsedSeconds, onGameCompleted]
+    [
+      boardSize,
+      mode,
+      numbers,
+      maxNumber,
+      horizontalWalls,
+      verticalWalls,
+      bestTimes,
+      elapsedSeconds,
+      onGameCompleted,
+    ]
   );
 
   const commitPathUpdate = useCallback(
@@ -283,24 +306,24 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       dragSnapshotRef.current = [...path];
       dragChangedRef.current = false;
 
-      const existingIdx = path.indexOf(idx);
-      if (existingIdx !== -1) {
-        // Clicking/starting on an earlier cell in the path trims back to it
-        if (existingIdx < path.length - 1) {
-          const trimmed = path.slice(0, existingIdx + 1);
+      const res = applyZipCellInteraction(
+        path,
+        idx,
+        'start',
+        boardSize,
+        numbers,
+        horizontalWalls,
+        verticalWalls
+      );
+      if (res.changed) {
+        if (res.action === 'backtrack') {
           sound.playErase();
-          commitPathUpdate(trimmed, false);
+        } else {
+          sound.playNote();
         }
-        return;
-      }
-
-      // Clicking directly on a legal neighbor of head steps onto it immediately
-      const check = canStepZipPath(path, idx, boardSize, numbers, horizontalWalls, verticalWalls);
-      if (check.ok) {
-        sound.playNote();
-        commitPathUpdate([...path, idx], false);
-      } else if (check.reason && realTimeCheck) {
-        showTransientFeedback(check.reason, idx);
+        commitPathUpdate(res.path, false);
+      } else if (res.action === 'blocked' && res.reason && realTimeCheck) {
+        showTransientFeedback(res.reason, idx);
       }
     },
     [
@@ -321,72 +344,24 @@ export const ZipGame: React.FC<ZipGameProps> = ({
     (idx: number) => {
       if (isPaused || isCompleted) return;
 
-      const existingIdx = path.indexOf(idx);
-      if (existingIdx !== -1) {
-        // Backtracking onto any earlier cell in path automatically shortens it
-        if (existingIdx < path.length - 1) {
-          const trimmed = path.slice(0, existingIdx + 1);
+      const res = applyZipCellInteraction(
+        path,
+        idx,
+        'move',
+        boardSize,
+        numbers,
+        horizontalWalls,
+        verticalWalls
+      );
+      if (res.changed) {
+        if (res.action === 'backtrack') {
           sound.playErase();
-          commitPathUpdate(trimmed, false);
-        }
-        return;
-      }
-
-      if (path.length === 0) {
-        if (numbers[idx] === 1) {
-          sound.playNote();
-          commitPathUpdate([idx], false);
-        }
-        return;
-      }
-
-      const head = path[path.length - 1];
-      if (areOrthogonalNeighbors(head, idx, boardSize)) {
-        const check = canStepZipPath(path, idx, boardSize, numbers, horizontalWalls, verticalWalls);
-        if (check.ok) {
-          sound.playNote();
-          commitPathUpdate([...path, idx], false);
-        } else if (check.reason && realTimeCheck) {
-          showTransientFeedback(check.reason, idx);
-        }
-        return;
-      }
-
-      // Fast pointer sweep across 2 steps: bridge only if unambiguous single legal intermediate cell exists
-      const r1 = Math.floor(head / boardSize);
-      const c1 = head % boardSize;
-      const r2 = Math.floor(idx / boardSize);
-      const c2 = idx % boardSize;
-      if (Math.abs(r1 - r2) + Math.abs(c1 - c2) === 2) {
-        const candidates: number[] = [];
-        if (r1 === r2) {
-          candidates.push(r1 * boardSize + (c1 + c2) / 2);
-        } else if (c1 === c2) {
-          candidates.push(((r1 + r2) / 2) * boardSize + c1);
         } else {
-          candidates.push(r1 * boardSize + c2);
-          candidates.push(r2 * boardSize + c1);
-        }
-
-        const validBridges: number[] = [];
-        for (const mid of candidates) {
-          const step1 = canStepZipPath(path, mid, boardSize, numbers, horizontalWalls, verticalWalls);
-          if (!step1.ok) continue;
-          const step2 = canStepZipPath(
-            [...path, mid],
-            idx,
-            boardSize,
-            numbers,
-            horizontalWalls,
-            verticalWalls
-          );
-          if (step2.ok) validBridges.push(mid);
-        }
-
-        if (validBridges.length === 1) {
           sound.playNote();
-          commitPathUpdate([...path, validBridges[0], idx], false);
         }
+        commitPathUpdate(res.path, false);
+      } else if (res.action === 'blocked' && res.reason && realTimeCheck) {
+        showTransientFeedback(res.reason, idx);
       }
     },
     [
@@ -444,7 +419,14 @@ export const ZipGame: React.FC<ZipGameProps> = ({
 
   const handleUseHint = useCallback(() => {
     if (isPaused || isCompleted) return;
-    const hint = getZipHint(path, solutionPath);
+    const hint = getZipHint(path, solutionPath, {
+      mode,
+      size: boardSize,
+      numbers,
+      maxNumber,
+      horizontalWalls,
+      verticalWalls,
+    });
     if (!hint) return;
 
     setHintsUsed((prev) => prev + 1);
@@ -458,18 +440,43 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       setHintTargetCell(null);
       setHintBacktrackCell(hint.backtrackCell);
       setStatusNote(
-        'Odbočili jste ze správného řešení — vraťte se na červeně označené políčko.'
+        mode === 'simple'
+          ? 'Cesta k dalšímu číslu je zablokovaná — vraťte se na červeně označené políčko.'
+          : 'Odbočili jste ze správného řešení — vraťte se na červeně označené políčko.'
       );
     }
-  }, [isPaused, isCompleted, path, solutionPath]);
+  }, [
+    isPaused,
+    isCompleted,
+    path,
+    solutionPath,
+    mode,
+    boardSize,
+    numbers,
+    maxNumber,
+    horizontalWalls,
+    verticalWalls,
+  ]);
 
   const handleSizeClick = (sz: ZipBoardSize) => {
     if (sz === boardSize) return;
     if (path.length > 1 && !isCompleted) {
       setPendingSize(sz);
+      setPendingMode(mode);
       setShowNewGameConfirm(true);
     } else {
-      startNewGame(sz);
+      startNewGame(sz, mode);
+    }
+  };
+
+  const handleModeClick = (nextMode: ZipMode) => {
+    if (nextMode === mode) return;
+    if (path.length > 1 && !isCompleted) {
+      setPendingSize(boardSize);
+      setPendingMode(nextMode);
+      setShowNewGameConfirm(true);
+    } else {
+      startNewGame(boardSize, nextMode);
     }
   };
 
@@ -533,14 +540,41 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           onClick={() => {
             if (path.length > 1 && !isCompleted) {
               setPendingSize(boardSize);
+              setPendingMode(mode);
               setShowNewGameConfirm(true);
             } else {
-              startNewGame(boardSize);
+              startNewGame(boardSize, mode);
             }
           }}
           className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs active:scale-95 whitespace-nowrap shrink-0"
         >
           Nová hra
+        </button>
+      </div>
+
+      {/* Mode Toggle: Classic (walls + all cells) vs Simple (connect numbers freely without walls) */}
+      <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl gap-1" role="group" aria-label="Režim hry Zip">
+        <button
+          type="button"
+          onClick={() => handleModeClick('classic')}
+          className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+            mode === 'classic'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Klasický (se zdmi)
+        </button>
+        <button
+          type="button"
+          onClick={() => handleModeClick('simple')}
+          className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+            mode === 'simple'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Jednoduché spojování
         </button>
       </div>
 
@@ -558,9 +592,19 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       {/* Clean unboxed progress metadata */}
       <div className="flex items-center justify-between px-1 text-xs text-slate-600 font-medium">
         <div className="flex items-center gap-2 tabular-nums">
-          <span>
-            Políčka: <strong className="text-slate-900">{path.length}</strong>/{totalCells}
-          </span>
+          {mode === 'classic' ? (
+            <span>
+              Políčka: <strong className="text-slate-900">{path.length}</strong>/{totalCells}
+            </span>
+          ) : (
+            <span>
+              Spojeno:{' '}
+              <strong className="text-slate-900">
+                {Math.min(maxNumber, nextExpectedNumber - 1)}
+              </strong>
+              /{maxNumber}
+            </span>
+          )}
           <span aria-hidden="true">·</span>
           <span>
             Další číslo:{' '}
@@ -651,10 +695,10 @@ export const ZipGame: React.FC<ZipGameProps> = ({
         timeSeconds={elapsedSeconds}
         isNewBest={isNewBest}
         bestTime={bestTimes[boardSize]}
-        onPlayAgain={() => startNewGame(boardSize)}
+        onPlayAgain={() => startNewGame(boardSize, mode)}
         onNextSize={() => {
           const nextSize: ZipBoardSize = boardSize === 5 ? 6 : 7;
-          startNewGame(nextSize);
+          startNewGame(nextSize, mode);
         }}
         onSelectGame={onSelectGame}
       />
@@ -663,19 +707,27 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       <ConfirmModal
         isOpen={showNewGameConfirm}
         title="Spustit novou hru Zip?"
-        description={`Vygeneruje se nová mřížka ${pendingSize || boardSize}×${
-          pendingSize || boardSize
-        } s unikátním řešením.`}
+        description={
+          (pendingMode || mode) === 'simple'
+            ? `Vygeneruje se nová mřížka ${pendingSize || boardSize}×${
+                pendingSize || boardSize
+              } pro jednoduché spojování bez zdí.`
+            : `Vygeneruje se nová mřížka ${pendingSize || boardSize}×${
+                pendingSize || boardSize
+              } s unikátním řešením.`
+        }
         confirmLabel="Nová hra"
         confirmVariant="primary"
         onConfirm={() => {
           const target = pendingSize || boardSize;
+          const targetMode = pendingMode || mode;
           setShowNewGameConfirm(false);
-          startNewGame(target);
+          startNewGame(target, targetMode);
         }}
         onCancel={() => {
           setShowNewGameConfirm(false);
           setPendingSize(null);
+          setPendingMode(null);
         }}
       />
 

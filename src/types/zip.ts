@@ -1,7 +1,9 @@
 export type ZipBoardSize = 5 | 6 | 7;
+export type ZipMode = 'classic' | 'simple';
 
 export interface ZipPuzzle {
   size: ZipBoardSize;
+  mode?: ZipMode;
   /** 0 = empty cell, 1..maxNumber = checkpoint numbers */
   numbers: number[];
   maxNumber: number;
@@ -9,12 +11,13 @@ export interface ZipPuzzle {
   horizontalWalls: boolean[];
   /** Walls between (r, c) and (r + 1, c): length (size - 1) * size */
   verticalWalls: boolean[];
-  /** Unique guaranteed Hamiltonian solution path (cell indices from 1 to maxNumber) */
+  /** Guaranteed valid solution path (Hamiltonian in classic mode) */
   solutionPath: number[];
 }
 
 export interface ZipState {
   size: ZipBoardSize;
+  mode?: ZipMode;
   numbers: number[];
   maxNumber: number;
   horizontalWalls: boolean[];

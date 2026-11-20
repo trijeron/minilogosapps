@@ -215,16 +215,117 @@ export function findQueensConflicts(
 export function isQueensCompleted(
   board: QueensCellState[],
   regions: number[],
-  solutionQueens: number[],
+  _solutionQueens: number[],
   size: number
 ): boolean {
-  let queenCount = 0;
   const total = size * size;
+  if (board.length < total || regions.length < total) return false;
+
+  let queenCount = 0;
+  const usedRegions = new Set<number>();
   for (let i = 0; i < total; i++) {
     if (board[i] === 2) {
       queenCount++;
-      if (!solutionQueens.includes(i)) return false;
+      const reg = regions[i];
+      if (reg === undefined || reg < 0) return false;
+      usedRegions.add(reg);
     }
   }
-  return queenCount === size;
+
+  if (queenCount !== size || usedRegions.size !== size) return false;
+
+  const conflicts = findQueensConflicts(board, regions, size);
+  return conflicts.allViolatingQueens.size === 0;
 }
+
+/**
+ * Finds a valid full Queens placement consistent with the player's currently placed queens.
+ * Returns null if the current board already has conflicts or no valid completion exists.
+ */
+export function findConsistentQueensSolution(
+  board: QueensCellState[],
+  regions: number[],
+  size: number
+): number[] | null {
+  const total = size * size;
+  if (board.length < total || regions.length < total) return null;
+
+  const conflicts = findQueensConflicts(board, regions, size);
+  if (conflicts.allViolatingQueens.size > 0) return null;
+
+  const placedColByRow = new Array<number>(size).fill(-1);
+  const usedCols = new Array<boolean>(size).fill(false);
+  const usedRegions = new Set<number>();
+
+  for (let i = 0; i < total; i++) {
+    if (board[i] === 2) {
+      const r = Math.floor(i / size);
+      const c = i % size;
+      placedColByRow[r] = c;
+      usedCols[c] = true;
+      usedRegions.add(regions[i]);
+    }
+  }
+
+  const remainingRows: number[] = [];
+  for (let r = 0; r < size; r++) {
+    if (placedColByRow[r] === -1) remainingRows.push(r);
+  }
+
+  const canPlace = (r: number, c: number): boolean => {
+    if (usedCols[c]) return false;
+    const reg = regions[r * size + c];
+    if (reg === undefined || reg < 0 || usedRegions.has(reg)) return false;
+    if (r > 0 && placedColByRow[r - 1] !== -1 && Math.abs(placedColByRow[r - 1] - c) <= 1) {
+      return false;
+    }
+    if (r + 1 < size && placedColByRow[r + 1] !== -1 && Math.abs(placedColByRow[r + 1] - c) <= 1) {
+      return false;
+    }
+    return true;
+  };
+
+  function backtrack(unassignedCount: number): boolean {
+    if (unassignedCount === 0) return true;
+
+    // MRV heuristic: choose the unassigned row with the fewest legal columns
+    let bestRow = -1;
+    let bestCandidates: number[] = [];
+
+    for (const r of remainingRows) {
+      if (placedColByRow[r] !== -1) continue;
+      const candidates: number[] = [];
+      for (let c = 0; c < size; c++) {
+        if (canPlace(r, c)) candidates.push(c);
+      }
+      if (candidates.length === 0) return false;
+      if (bestRow === -1 || candidates.length < bestCandidates.length) {
+        bestRow = r;
+        bestCandidates = candidates;
+        if (bestCandidates.length === 1) break;
+      }
+    }
+
+    if (bestRow === -1) return true;
+
+    for (const c of bestCandidates) {
+      const reg = regions[bestRow * size + c];
+      placedColByRow[bestRow] = c;
+      usedCols[c] = true;
+      usedRegions.add(reg);
+
+      if (backtrack(unassignedCount - 1)) return true;
+
+      placedColByRow[bestRow] = -1;
+      usedCols[c] = false;
+      usedRegions.delete(reg);
+    }
+
+    return false;
+  }
+
+  if (!backtrack(remainingRows.length)) return null;
+
+  return placedColByRow.map((c, r) => r * size + c);
+}
+

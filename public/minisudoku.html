@@ -371,12 +371,13 @@
         <button id="btn-mj-warn-shuffle" type="button" class="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold shrink-0 hidden">Zamíchat</button>
       </div>
 
-      <!-- Top Zoom Slider Bar -->
-      <div class="w-full flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl">
+      <!-- Top Zoom & 3D Angle Bar -->
+      <div class="w-full flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl">
         <button id="btn-mj-zoom-out" type="button" title="Zmenšit desku" class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 text-sm font-bold text-slate-700 shrink-0">−</button>
-        <input id="mj-zoom-slider" type="range" min="75" max="250" step="5" value="100" aria-label="Přiblížení desky" class="flex-1 h-2 bg-slate-200 rounded-lg accent-emerald-700 cursor-pointer" />
+        <input id="mj-zoom-slider" type="range" min="75" max="250" step="5" value="100" aria-label="Přiblížení desky" class="flex-1 min-w-[60px] h-2 bg-slate-200 rounded-lg accent-emerald-700 cursor-pointer" />
         <button id="btn-mj-zoom-in" type="button" title="Zvětšit desku" class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 text-sm font-bold text-slate-700 shrink-0">+</button>
-        <button id="btn-mj-zoom-reset" type="button" title="Vrátit na 100 %" class="px-2.5 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-800 font-mono-num min-w-[52px] shrink-0">100%</button>
+        <button id="btn-mj-zoom-reset" type="button" title="Přepnout velikost 100 % / 150 %" class="px-2 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-800 font-mono-num min-w-[46px] shrink-0">100%</button>
+        <button id="btn-mj-angle" type="button" title="Přepnout 3D šikmý pohled vrstev" class="px-2.5 h-8 rounded-lg border border-emerald-800 bg-emerald-700 text-white text-xs font-bold shrink-0">3D</button>
       </div>
 
       <div id="mj-selected-bar" class="hidden w-full px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-semibold flex items-center justify-between gap-2">
@@ -386,10 +387,10 @@
 
       <!-- Layered Mahjong Felt Mat -->
       <div id="mj-board-wrap" class="relative z-0 isolate w-full rounded-2xl border-4 border-[#17332a] shadow-inner overflow-hidden" style="background-color:#214d3d;">
-        <div id="mj-board-scroll" class="w-full overflow-auto max-h-[70vh] sm:max-h-[75vh]">
-          <div id="mj-board" class="relative mx-auto" style="width:100%; aspect-ratio:16/11;"></div>
+        <div id="mj-board-scroll" class="w-full overflow-auto max-h-[68vh] sm:max-h-[75vh] touch-pan-x touch-pan-y">
+          <div id="mj-board" class="relative mx-auto" style="width:100%; aspect-ratio:1/1;"></div>
         </div>
-        <div id="mj-pause-overlay" class="hidden absolute inset-0 z-[600] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
+        <div id="mj-pause-overlay" class="hidden absolute inset-0 z-[4000] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
           <h3 class="text-base font-bold mb-1">Časomíra pozastavena</h3>
           <p class="text-xs text-slate-300 mb-4 max-w-xs">Kameny jsou během pauzy skryté.</p>
           <button id="btn-mj-resume" type="button" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md active:scale-95">Pokračovat ve hře</button>
@@ -421,6 +422,11 @@
         <button id="btn-zip-new" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs active:scale-95">
           Nová hra
         </button>
+      </div>
+
+      <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl gap-1">
+        <button type="button" data-zip-mode="classic" class="zip-mode-btn py-1.5 px-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-xs transition-all">Klasický (se zdmi)</button>
+        <button type="button" data-zip-mode="simple" class="zip-mode-btn py-1.5 px-2 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition-all">Jednoduché spojování</button>
       </div>
 
       <div class="w-full flex items-center justify-between py-1.5 px-3 bg-white rounded-xl border border-slate-200 shadow-2xs text-xs font-medium text-slate-700">
@@ -1964,24 +1970,96 @@
       if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
     }
 
+    function findConsistentQueensSolution() {
+      const sz = queens.size;
+      const total = sz * sz;
+      if (getQueensConflicts().violating.size > 0) return null;
+
+      const placedColByRow = new Array(sz).fill(-1);
+      const usedCols = new Array(sz).fill(false);
+      const usedRegs = new Set();
+
+      for (let i = 0; i < total; i++) {
+        if (queens.board[i] === 2) {
+          const r = Math.floor(i / sz);
+          const c = i % sz;
+          placedColByRow[r] = c;
+          usedCols[c] = true;
+          usedRegs.add(queens.regions[i]);
+        }
+      }
+
+      const remainingRows = [];
+      for (let r = 0; r < sz; r++) {
+        if (placedColByRow[r] === -1) remainingRows.push(r);
+      }
+
+      function canPlace(r, c) {
+        if (usedCols[c]) return false;
+        const reg = queens.regions[r * sz + c];
+        if (reg === undefined || reg < 0 || usedRegs.has(reg)) return false;
+        if (r > 0 && placedColByRow[r - 1] !== -1 && Math.abs(placedColByRow[r - 1] - c) <= 1) return false;
+        if (r + 1 < sz && placedColByRow[r + 1] !== -1 && Math.abs(placedColByRow[r + 1] - c) <= 1) return false;
+        return true;
+      }
+
+      function backtrack(unassigned) {
+        if (unassigned === 0) return true;
+        let bestRow = -1;
+        let bestCols = [];
+        for (const r of remainingRows) {
+          if (placedColByRow[r] !== -1) continue;
+          const cols = [];
+          for (let c = 0; c < sz; c++) {
+            if (canPlace(r, c)) cols.push(c);
+          }
+          if (cols.length === 0) return false;
+          if (bestRow === -1 || cols.length < bestCols.length) {
+            bestRow = r;
+            bestCols = cols;
+            if (bestCols.length === 1) break;
+          }
+        }
+        if (bestRow === -1) return true;
+        for (const c of bestCols) {
+          const reg = queens.regions[bestRow * sz + c];
+          placedColByRow[bestRow] = c;
+          usedCols[c] = true;
+          usedRegs.add(reg);
+          if (backtrack(unassigned - 1)) return true;
+          placedColByRow[bestRow] = -1;
+          usedCols[c] = false;
+          usedRegs.delete(reg);
+        }
+        return false;
+      }
+
+      if (!backtrack(remainingRows.length)) return null;
+      return placedColByRow.map((c, r) => r * sz + c);
+    }
+
     function checkQueensWin() {
       let count = 0;
+      const usedRegs = new Set();
       const total = queens.size * queens.size;
       for (let i = 0; i < total; i++) {
         if (queens.board[i] === 2) {
           count++;
-          if (!queens.solutionQueens.includes(i)) return;
+          const reg = queens.regions[i];
+          if (reg === undefined || reg < 0) return;
+          usedRegs.add(reg);
         }
       }
-      if (count === queens.size) {
-        queens.isCompleted = true;
-        sound.playVictory();
-        document.getElementById('vic-game').textContent = `LinkedIn Queens (${queens.size}×${queens.size})`;
-        document.getElementById('vic-time').textContent = formatTime(queens.elapsedSeconds);
-        document.getElementById('victory-modal').classList.remove('hidden');
-        startConfetti();
-        if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
-      }
+      if (count !== queens.size || usedRegs.size !== queens.size) return;
+      if (getQueensConflicts().violating.size > 0) return;
+
+      queens.isCompleted = true;
+      sound.playVictory();
+      document.getElementById('vic-game').textContent = `LinkedIn Queens (${queens.size}×${queens.size})`;
+      document.getElementById('vic-time').textContent = formatTime(queens.elapsedSeconds);
+      document.getElementById('victory-modal').classList.remove('hidden');
+      startConfetti();
+      if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
     }
 
     // Tab Switching
@@ -2215,7 +2293,8 @@
 
     document.getElementById('btn-queens-hint').addEventListener('click', () => {
       if (queens.hintsLeft <= 0 || queens.isCompleted) return;
-      for (const qIdx of queens.solutionQueens) {
+      const activeSol = findConsistentQueensSolution() || queens.solutionQueens;
+      for (const qIdx of activeSol) {
         if (queens.board[qIdx] !== 2) {
           queens.board[qIdx] = 2;
           queens.hintCells.push(qIdx);
@@ -2715,38 +2794,47 @@
       return beats.length > 0 ? beats[0] : low[0];
     }
     function mbCardHtml(card, opts = {}) {
-      const { faceDown = false, size = 'sm', playable = false, dimmed = false, winning = false, overlap = false, isTrump = false, attrs = '' } = opts;
+      const { faceDown = false, size = 'sm', playable = false, dimmed = false, winning = false, overlap = false, overlapMode = null, isTrump = false, attrs = '' } = opts;
+      const effOverlap = overlapMode || (overlap ? 'fan' : 'none');
+      const isOv = effOverlap !== 'none';
       const sz = size === 'xs'
-        ? 'w-8 h-11 rounded-md text-[10px]'
+        ? 'w-9 h-12 rounded-md text-[10px]'
         : size === 'sm'
-          ? 'w-11 h-[64px] sm:w-[52px] sm:h-[76px] rounded-xl text-xs'
+          ? 'w-[54px] h-[76px] sm:w-[60px] sm:h-[86px] rounded-xl text-xs'
           : size === 'trick'
-            ? 'w-12 h-[70px] sm:w-14 sm:h-[82px] rounded-xl text-sm'
-            : 'w-12 h-[74px] sm:w-14 sm:h-[86px] rounded-xl text-sm';
+            ? 'w-14 h-[78px] sm:w-[62px] sm:h-[88px] rounded-xl text-sm'
+            : 'w-[58px] h-[82px] sm:w-[64px] sm:h-[92px] rounded-xl text-sm';
       if (faceDown || !card) {
         return `<div class="${sz} bg-white p-0.5 shadow-sm border border-slate-300 shrink-0"><div class="w-full h-full rounded bg-gradient-to-br from-emerald-800 to-slate-900 border border-amber-300/40"></div></div>`;
       }
       const m = MB_SUIT_META[card.suit];
-      const clr = m.red ? 'text-rose-600' : 'text-slate-900';
-      const honor = card.rank >= 11;
-      const surf = honor ? 'bg-gradient-to-b from-white via-amber-50/35 to-amber-50/70' : 'bg-gradient-to-b from-white to-slate-50';
-      const brd = isTrump ? 'border-amber-400' : 'border-slate-300';
+      const muted = !playable && dimmed;
+      const clr = muted ? (m.red ? 'text-rose-400' : 'text-slate-400') : (m.red ? 'text-rose-600' : 'text-slate-900');
+      const surf = muted ? 'bg-slate-200' : 'bg-white';
+      const brd = muted ? 'border-slate-400' : (isTrump ? 'border-amber-400' : 'border-slate-300');
       const st = playable
-        ? 'cursor-pointer -translate-y-1 hover:-translate-y-2.5 hover:z-30 active:scale-95 ring-2 ring-amber-300 shadow-[0_6px_14px_rgba(0,0,0,0.34)]'
+        ? 'cursor-pointer -translate-y-1.5 hover:-translate-y-3 hover:z-30 active:scale-95 ring-2 ring-inset ring-amber-400 border-amber-400 shadow-[-2px_5px_10px_rgba(0,0,0,0.3)]'
         : dimmed
-          ? 'cursor-not-allowed opacity-45 saturate-50'
-          : overlap ? 'hover:-translate-y-1 hover:z-20' : '';
+          ? 'cursor-not-allowed translate-y-0.5'
+          : isOv ? 'hover:-translate-y-1.5 hover:z-20' : '';
       const winCls = winning ? 'ring-2 ring-amber-400 shadow-lg scale-[1.04] z-10' : '';
-      const ovCls = overlap ? (size === 'sm' ? '-ml-[22px] first:ml-0 sm:-ml-[18px] sm:first:ml-0' : '-ml-[24px] first:ml-0 sm:-ml-[18px] sm:first:ml-0') : '';
+      const ovCls = effOverlap === 'suits'
+        ? (size === 'sm' ? '-ml-[12px] first:ml-0 sm:-ml-[10px] sm:first:ml-0' : '-ml-[10px] first:ml-0 sm:-ml-[8px] sm:first:ml-0')
+        : effOverlap === 'fan'
+          ? '-ml-[18px] first:ml-0 sm:-ml-[16px] sm:first:ml-0'
+          : '';
       const hcp = mbHcpCard(card);
       const badge = mb.showHcp && hcp > 0
-        ? `<span class="w-[15px] h-[15px] rounded-full bg-amber-400 text-slate-950 font-black text-[9px] flex items-center justify-center border border-amber-700/20">${hcp}</span>`
+        ? `<span class="w-4 h-4 rounded-full font-black text-[9px] flex items-center justify-center border ${muted ? 'bg-slate-300 text-slate-600 border-slate-400' : 'bg-amber-400 text-slate-950 border-amber-500'}">${hcp}</span>`
         : '<span></span>';
-      const trumpStar = isTrump ? '<span class="absolute top-0.5 right-1 text-[8px] font-black text-amber-500 leading-none">★</span>' : '';
-      return `<button type="button" ${attrs} class="relative ${sz} ${surf} border ${brd} shadow-[0_3px_9px_rgba(0,0,0,0.24)] flex flex-col justify-between p-1 font-bold transition-all shrink-0 ${clr} ${st} ${winCls} ${ovCls}">
-        <span class="relative z-10 flex flex-col items-center leading-none self-start font-black w-[16px] pt-0.5"><span class="tracking-tighter">${mbRankTxt(card.rank)}</span><span class="text-[11px] mt-[1px]">${m.sym}</span></span>
-        <span class="relative z-10 self-center leading-none ${size === 'xs' ? 'text-sm' : size === 'sm' ? 'text-lg' : 'text-xl'}">${m.sym}</span>
-        <span class="relative z-10 w-full flex items-end justify-between leading-none pb-0.5">${badge}<span class="font-bold opacity-55 text-[9px] pr-0.5">${mbRankTxt(card.rank)}</span></span>
+      const trumpStar = isTrump ? '<span class="absolute top-1 right-1 text-[8px] font-black text-amber-500 leading-none">★</span>' : '';
+      const pipPos = isOv ? 'self-end pr-0.5 -my-1' : 'self-center';
+      const pipSz = size === 'xs' ? 'text-sm' : size === 'sm' ? (isOv ? 'text-base sm:text-lg' : 'text-xl') : (isOv ? 'text-lg sm:text-xl' : 'text-2xl');
+      const subRankCls = muted ? 'text-slate-400' : (m.red ? 'text-rose-400' : 'text-slate-500');
+      return `<button type="button" ${attrs} class="relative ${sz} ${surf} border ${brd} shadow-[-2px_3px_7px_rgba(0,0,0,0.2)] flex flex-col justify-between p-1.5 font-bold transition-all shrink-0 ${clr} ${st} ${winCls} ${ovCls}">
+        <span class="relative z-10 flex flex-col items-center leading-none self-start font-black w-[20px] sm:w-[22px]"><span class="tracking-tight ${size === 'sm' ? 'text-[13px] sm:text-[14px]' : 'text-[14px] sm:text-[16px]'}">${mbRankTxt(card.rank)}</span><span class="text-[12px] sm:text-[13px] mt-0.5">${m.sym}</span></span>
+        <span class="relative z-10 ${pipPos} leading-none ${pipSz}">${m.sym}</span>
+        <span class="relative z-10 w-full flex items-end justify-between leading-none">${badge}<span class="font-bold text-[9px] sm:text-[10px] ${subRankCls}">${mbRankTxt(card.rank)}</span></span>
         ${trumpStar}
       </button>`;
     }
@@ -2759,7 +2847,7 @@
         const isTrump = mb.contract && mb.contract.trump !== 'NT' && c.suit === mb.contract.trump;
         return mbCardHtml(c, {
           size,
-          overlap: true,
+          overlapMode: mb.viewMode,
           playable: isPlayable,
           dimmed: isDimmed,
           isTrump,
@@ -2767,7 +2855,7 @@
         });
       };
       if (mb.viewMode === 'fan') {
-        return `<div class="w-full overflow-x-auto pb-1 pt-2 px-1"><div class="mx-auto w-fit flex items-center">${cards.map(cardBtn).join('')}</div></div>`;
+        return `<div class="w-full overflow-x-auto pb-1.5 pt-3 px-1.5"><div class="mx-auto w-fit flex items-center">${cards.map(cardBtn).join('')}</div></div>`;
       }
       return `<div class="w-full flex flex-wrap items-end justify-center gap-x-3 gap-y-2 pt-1 pb-0.5">${MB_SUIT_SORT.map(s => {
         const sc = cards.filter(c => c.suit === s);
@@ -3137,7 +3225,8 @@
     const mj = {
       layout: 'pyramid',
       theme: 'comic',
-      zoomPct: (typeof sessionStorage !== 'undefined' ? (function () { try { const v = Number(sessionStorage.getItem('mahjong_zoom_v1')); if (!v || Number.isNaN(v)) return 100; const p = v <= 3 ? Math.round(v * 100) : Math.round(v); return (p >= 75 && p <= 250) ? p : 100; } catch (e) { return 100; } })() : 100),
+      viewAngle: (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('mahjong_view_angle_v1') === 'flat') ? 'flat' : '3d',
+      zoomPct: (typeof sessionStorage !== 'undefined' ? (function () { const def = (typeof window !== 'undefined' && window.innerWidth < 640) ? 145 : 100; try { const raw = sessionStorage.getItem('mahjong_zoom_v1'); if (!raw) return def; const v = Number(raw); if (!v || Number.isNaN(v)) return def; const p = v <= 3 ? Math.round(v * 100) : Math.round(v); return (p >= 75 && p <= 250) ? p : def; } catch (e) { return def; } })() : 100),
       tiles: [],
       history: [],
       hintsLeft: MJ_MAX_HINTS,
@@ -3503,16 +3592,28 @@
 
       const isComic = mj.theme === 'comic';
       const isFairytale = mj.theme === 'fairytale';
+      const is3D = mj.viewAngle !== 'flat';
       const wrap = document.getElementById('mj-board-wrap');
-      wrap.className = `relative w-full rounded-2xl border-4 shadow-inner overflow-hidden ${isComic ? 'border-slate-950' : isFairytale ? 'border-amber-900' : 'border-[#17332a]'}`;
+      wrap.className = `relative z-0 isolate w-full rounded-2xl border-4 shadow-inner overflow-hidden ${isComic ? 'border-slate-950' : isFairytale ? 'border-amber-900' : 'border-[#17332a]'}`;
       wrap.style.backgroundColor = isComic ? '#0f766e' : isFairytale ? '#2e1a47' : '#214d3d';
-      wrap.style.backgroundImage = isComic ? 'radial-gradient(rgba(15, 23, 42, 0.22) 1.5px, transparent 1.5px)' : isFairytale ? 'radial-gradient(rgba(253, 230, 138, 0.24) 1.2px, transparent 1.2px)' : 'none';
-      wrap.style.backgroundSize = isComic ? '14px 14px' : isFairytale ? '18px 18px' : 'auto';
+      wrap.style.backgroundImage = isComic
+        ? 'radial-gradient(rgba(15, 23, 42, 0.22) 1.5px, transparent 1.5px), linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.22) 100%)'
+        : isFairytale
+          ? 'radial-gradient(rgba(253, 230, 138, 0.22) 1.2px, transparent 1.2px), linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(10,4,25,0.3) 100%)'
+          : 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.25) 100%)';
+      wrap.style.backgroundSize = isComic ? '14px 14px, 100% 100%' : isFairytale ? '18px 18px, 100% 100%' : '100% 100%';
 
       document.getElementById('mj-zoom-slider').value = String(mj.zoomPct);
       document.getElementById('btn-mj-zoom-reset').textContent = `${mj.zoomPct}%`;
       document.getElementById('btn-mj-zoom-out').disabled = mj.zoomPct <= 75;
       document.getElementById('btn-mj-zoom-in').disabled = mj.zoomPct >= 250;
+      const angleBtn = document.getElementById('btn-mj-angle');
+      if (angleBtn) {
+        angleBtn.textContent = is3D ? '3D' : '2D';
+        angleBtn.className = is3D
+          ? 'px-2.5 h-8 rounded-lg border border-emerald-800 bg-emerald-700 text-white text-xs font-bold shrink-0'
+          : 'px-2.5 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shrink-0';
+      }
 
       const selTile = mj.selectedUid !== null ? active.find(t => t.uid === mj.selectedUid) : null;
       const selBar = document.getElementById('mj-selected-bar');
@@ -3523,18 +3624,29 @@
         selBar.classList.add('hidden');
       }
 
-      const boardEl = document.getElementById('mj-board');
-      boardEl.className = mj.zoomPct <= 100 ? 'relative mx-auto' : 'relative';
-      boardEl.style.width = `${mj.zoomPct}%`;
-      boardEl.style.aspectRatio = mj.layout === 'turtle' ? '16 / 10' : '16 / 11';
-
       const slots = mjSlots(mj.layout);
-      let maxX = 0, maxY = 0;
+      let maxX = 0, maxY = 0, maxZ = 0;
       for (const s of slots) {
         if (s.x + 2 > maxX) maxX = s.x + 2;
         if (s.y + 2 > maxY) maxY = s.y + 2;
+        if (s.z > maxZ) maxZ = s.z;
       }
-      const padX = 1.2, padY = 1.2, totalW = maxX + padX * 2, totalH = maxY + padY * 2;
+      const zShiftX = is3D ? 0.30 : 0.10;
+      const zShiftY = is3D ? 0.38 : 0.10;
+      const padLeft = 0.85 + maxZ * zShiftX;
+      const padTop = 0.85 + maxZ * zShiftY;
+      const padRight = is3D ? 1.45 : 1.1;
+      const padBottom = is3D ? 1.65 : 1.1;
+      const totalW = maxX + padLeft + padRight;
+      const totalH = maxY + padTop + padBottom;
+      const tileRatioY = is3D ? 1.24 : 1.14;
+      const boardAspect = totalW / (totalH * tileRatioY);
+
+      const boardEl = document.getElementById('mj-board');
+      boardEl.className = mj.zoomPct <= 100 ? 'relative mx-auto' : 'relative';
+      boardEl.style.width = `${mj.zoomPct}%`;
+      boardEl.style.aspectRatio = boardAspect.toFixed(4);
+
       const ordered = [...active].sort((a, b) => a.z - b.z || a.y - b.y || a.x - b.x);
       const compact = mj.layout === 'turtle' && mj.zoomPct < 135;
 
@@ -3543,40 +3655,34 @@
         const isSel = mj.selectedUid === t.uid;
         const isHint = mj.hintUids.includes(t.uid);
         const isShk = mj.blockedUid === t.uid;
-        const zShift = t.z * 0.45;
-        const left = (((t.x + padX) / totalW) * 100 - zShift).toFixed(3);
-        const top = (((t.y + padY) / totalH) * 100 - zShift).toFixed(3);
+        const z = t.z;
+        const left = (((t.x + padLeft - z * zShiftX) / totalW) * 100).toFixed(3);
+        const top = (((t.y + padTop - z * zShiftY) / totalH) * 100).toFixed(3);
         const w = ((1.92 / totalW) * 100).toFixed(3);
         const h = ((1.92 / totalH) * 100).toFixed(3);
-        const zIdx = t.z * 100 + Math.round(t.y) * 2 + (isSel ? 50 : 0);
+        const zIdx = z * 600 + Math.round(t.y) * 24 + Math.round(t.x) + (isSel ? 120 : 0);
         const cc = t.def.suit === 'chars' || (t.def.suit === 'dragons' && t.def.rank === 1) ? 'text-red-700'
           : t.def.suit === 'bamboo' || (t.def.suit === 'dragons' && t.def.rank === 2) ? 'text-emerald-800'
           : t.def.suit === 'flowers' ? 'text-pink-700' : t.def.suit === 'seasons' ? 'text-amber-800' : 'text-slate-800';
+        const faceBg = isSel ? (isComic ? '#fef08a' : isFairytale ? '#fef3c7' : '#fffbeb')
+          : isHint ? (isComic ? '#cffafe' : '#ecfeff')
+          : !isFree ? (isComic ? ['#cfc8b8','#d8d2c3','#e0dacd','#e8e3d8','#efebe2'][Math.min(z,4)] : isFairytale ? ['#dcd2c0','#e3dac8','#eae2d2','#f1eadc','#f6f1e6'][Math.min(z,4)] : ['#e1d9c6','#e8e1cf','#efe9d9','#f5f0e3','#faf6ec'][Math.min(z,4)])
+          : (isComic ? ['#f7f3e3','#faf7ea','#fdfbf2','#fffef8','#ffffff'][Math.min(z,4)] : isFairytale ? ['#f9f0dc','#fbf4e4','#fdf8ec','#fffbf4','#fffefa'][Math.min(z,4)] : ['#f6f1e3','#faf6eb','#fdfbf3','#fffef9','#ffffff'][Math.min(z,4)]);
+        const sBlur = 6 + z * 2.5, cX = 6 + z * 1.4, cY = 8 + z * 2.2, cA = Math.min(0.52, 0.30 + z * 0.055).toFixed(2);
+        const bShadow = is3D
+          ? (isComic
+              ? (isFree ? `inset 1px 1px 0 rgba(255,255,255,0.85), 1.5px 2px 0 #fde68a, 3px 4px 0 #d97706, 4.5px 6px 0 #0f172a, ${cX}px ${cY}px ${sBlur}px rgba(15,23,42,${cA})` : `inset 1px 1px 0 rgba(255,255,255,0.45), 1.5px 2px 0 #cbd5e1, 3px 4px 0 #64748b, 4.5px 6px 0 #1e293b, ${cX}px ${cY}px ${sBlur}px rgba(15,23,42,${cA})`)
+              : isFairytale
+                ? (isFree ? `inset 1px 1px 0 rgba(255,255,255,0.85), 1.2px 1.6px 0 #e7cfa0, 2.4px 3.2px 0 #b45309, 3.8px 5px 0 #78350f, 5px 6.6px 0 #451a03, ${cX}px ${cY}px ${sBlur}px rgba(24,9,44,${cA})` : `inset 1px 1px 0 rgba(255,255,255,0.4), 1.2px 1.6px 0 #c9bda7, 2.4px 3.2px 0 #78716c, 3.8px 5px 0 #57534e, 5px 6.6px 0 #292524, ${cX}px ${cY}px ${sBlur}px rgba(20,10,35,${cA})`)
+                : (isFree ? `inset 1px 1px 0 rgba(255,255,255,0.9), 1.2px 1.6px 0 #e2d8be, 2.4px 3.2px 0 #16a34a, 3.8px 5px 0 #15803d, 5px 6.6px 0 #14532d, ${cX}px ${cY}px ${sBlur}px rgba(5,25,18,${cA})` : `inset 1px 1px 0 rgba(255,255,255,0.4), 1.2px 1.6px 0 #cfc6b2, 2.4px 3.2px 0 #4b7c65, 3.8px 5px 0 #2d5a46, 5px 6.6px 0 #1b3a2d, ${cX}px ${cY}px ${sBlur}px rgba(5,25,18,${cA})`))
+          : '2px 3px 0px 0px #78716c, 2px 4px 5px rgba(0,0,0,0.25)';
         const stateCls = isComic
-          ? (isSel
-              ? 'bg-yellow-200 border-2 border-slate-950 ring-2 ring-amber-400 -translate-y-1 shadow-[3px_4px_0px_0px_#0f172a]'
-              : isHint
-                ? 'bg-cyan-100 border-2 border-slate-950 ring-2 ring-cyan-400 shadow-[3px_4px_0px_0px_#0891b2]'
-                : isFree
-                  ? 'bg-[#FFFDF5] border-2 border-slate-950 hover:-translate-y-0.5 cursor-pointer shadow-[2px_3px_0px_0px_#0f172a]'
-                  : 'bg-[#D7D2C5] border-2 border-slate-700 cursor-not-allowed brightness-90 shadow-[2px_2px_0px_0px_#334155]')
+          ? (isSel ? 'border-2 border-slate-950 ring-2 ring-amber-400 -translate-y-1' : isHint ? 'border-2 border-slate-950 ring-2 ring-cyan-400' : isFree ? 'border-2 border-slate-950 hover:-translate-y-0.5 cursor-pointer' : 'border-2 border-slate-700 cursor-not-allowed brightness-90')
           : isFairytale
-            ? (isSel
-                ? 'bg-amber-100 border-2 border-amber-500 ring-2 ring-amber-300 -translate-y-1 shadow-xl'
-                : isHint
-                  ? 'bg-cyan-50 border-2 border-cyan-500 ring-2 ring-cyan-400 shadow-xl'
-                  : isFree
-                    ? 'bg-[#FFF9EC] border border-amber-500/80 hover:-translate-y-0.5 cursor-pointer shadow-[2px_3px_0px_0px_#92400e,2px_4px_7px_rgba(30,10,50,0.28)]'
-                    : 'bg-[#E4DCCD] border border-stone-500/70 cursor-not-allowed brightness-90 shadow-[2px_3px_0px_0px_#57534e,2px_4px_5px_rgba(0,0,0,0.25)]')
-            : (isSel
-                ? 'bg-amber-50 border border-amber-500 ring-2 ring-amber-400 -translate-y-1 shadow-xl'
-                : isHint
-                  ? 'bg-cyan-50 border border-cyan-500 ring-2 ring-cyan-400 shadow-xl'
-                  : isFree
-                    ? 'bg-[#FFFDF7] border border-amber-300/90 hover:-translate-y-0.5 cursor-pointer shadow-[2px_3px_0px_0px_#b45309,3px_5px_8px_rgba(0,0,0,0.28)]'
-                    : 'bg-[#EBE5D5] border border-stone-400/80 cursor-not-allowed brightness-90 shadow-[2px_3px_0px_0px_#78716c,2px_4px_5px_rgba(0,0,0,0.25)]');
+            ? (isSel ? 'border-2 border-amber-500 ring-2 ring-amber-300 -translate-y-1' : isHint ? 'border-2 border-cyan-500 ring-2 ring-cyan-400' : isFree ? 'border border-amber-600/80 hover:-translate-y-0.5 cursor-pointer' : 'border border-stone-500/75 cursor-not-allowed brightness-90')
+            : (isSel ? 'border border-amber-500 ring-2 ring-amber-400 -translate-y-1' : isHint ? 'border border-cyan-500 ring-2 ring-cyan-400' : isFree ? 'border border-amber-400/90 hover:-translate-y-0.5 cursor-pointer' : 'border border-stone-400/80 cursor-not-allowed brightness-90');
 
-        return `<button type="button" data-mj-uid="${t.uid}" title="${t.def.labelCs}${isFree ? '' : ' (zablokovaný kámen)'}" style="left:${left}%;top:${top}%;width:${w}%;height:${h}%;z-index:${zIdx};" class="absolute rounded-md sm:rounded-lg transition-transform duration-150 flex items-center justify-center p-0.5 select-none ${stateCls} ${isShk ? 'ring-2 ring-rose-500' : ''}">
+        return `<button type="button" data-mj-uid="${t.uid}" title="${t.def.labelCs}${isFree ? '' : ' (zablokovaný kámen)'}" style="left:${left}%;top:${top}%;width:${w}%;height:${h}%;z-index:${zIdx};background-color:${faceBg};box-shadow:${bShadow};" class="absolute rounded-md sm:rounded-lg transition-transform duration-150 flex items-center justify-center p-0.5 select-none ${stateCls} ${isShk ? 'ring-2 ring-rose-500' : ''}">
           <span class="absolute top-0.5 left-0.5 sm:top-1 sm:left-1 ${isComic ? 'font-black' : 'font-extrabold'} leading-none font-mono-num ${cc} ${compact ? 'text-[7px] sm:text-[9px]' : 'text-[8px] sm:text-[10px]'}">${t.def.cornerText}</span>
           <div class="w-full h-full flex items-center justify-center pt-1">${mjGlyphHtml(t, compact)}</div>
         </button>`;
@@ -3649,8 +3755,13 @@
     };
     document.getElementById('mj-zoom-slider').addEventListener('input', (e) => setMjZoomPct(Number(e.target.value)));
     document.getElementById('btn-mj-zoom-out').addEventListener('click', () => setMjZoomPct(mj.zoomPct - 15));
-    document.getElementById('btn-mj-zoom-reset').addEventListener('click', () => setMjZoomPct(100));
+    document.getElementById('btn-mj-zoom-reset').addEventListener('click', () => setMjZoomPct(mj.zoomPct === 100 ? 150 : 100));
     document.getElementById('btn-mj-zoom-in').addEventListener('click', () => setMjZoomPct(mj.zoomPct + 15));
+    document.getElementById('btn-mj-angle').addEventListener('click', () => {
+      mj.viewAngle = mj.viewAngle === '3d' ? 'flat' : '3d';
+      try { sessionStorage.setItem('mahjong_view_angle_v1', mj.viewAngle); } catch (e) {}
+      renderMahjong();
+    });
     document.getElementById('btn-mj-clear-sel').addEventListener('click', () => { mj.selectedUid = null; renderMahjong(); });
 
     document.querySelectorAll('.mj-layout-btn').forEach(btn => {
@@ -3917,13 +4028,11 @@
       return { count: solutions.length, solutions, aborted };
     }
 
-    function generateZipPuzzle(size = 6) {
+    function generateZipPuzzle(size = 6, mode = 'classic') {
       const total = size * size;
       const hLen = size * (size - 1), vLen = (size - 1) * size;
-      const maxWalls = size === 5 ? 10 : size === 6 ? 13 : 16;
 
-      for (let att = 0; att < 40; att++) {
-        const solutionPath = generateRandomZipHamiltonian(size);
+      const buildCheckpoints = (solPath) => {
         const targetCount = size === 5 ? 7 : size === 6 ? 9 : 11;
         const selected = new Set([0, total - 1]);
         const idealStep = (total - 1) / (targetCount - 1);
@@ -3936,7 +4045,29 @@
           else selected.add(c);
         }
         const numbers = new Array(total).fill(0);
-        Array.from(selected).sort((a, b) => a - b).forEach((pIdx, i) => { numbers[solutionPath[pIdx]] = i + 1; });
+        Array.from(selected).sort((a, b) => a - b).forEach((pIdx, i) => { numbers[solPath[pIdx]] = i + 1; });
+        return numbers;
+      };
+
+      if (mode === 'simple') {
+        const solutionPath = generateRandomZipHamiltonian(size);
+        const numbers = buildCheckpoints(solutionPath);
+        return {
+          size,
+          mode: 'simple',
+          numbers,
+          maxNumber: Math.max(...numbers),
+          horizontalWalls: new Array(hLen).fill(false),
+          verticalWalls: new Array(vLen).fill(false),
+          solutionPath,
+        };
+      }
+
+      const maxWalls = size === 5 ? 10 : size === 6 ? 13 : 16;
+
+      for (let att = 0; att < 40; att++) {
+        const solutionPath = generateRandomZipHamiltonian(size);
+        const numbers = buildCheckpoints(solutionPath);
 
         const hWalls = new Array(hLen).fill(false), vWalls = new Array(vLen).fill(false);
         const pathKeys = new Set();
@@ -4024,7 +4155,7 @@
     }
 
     let zipState = {
-      size: 6, numbers: [], maxNumber: 2, horizontalWalls: [], verticalWalls: [], solutionPath: [],
+      size: 6, mode: 'classic', numbers: [], maxNumber: 2, horizontalWalls: [], verticalWalls: [], solutionPath: [],
       path: [], history: [], elapsedSeconds: 0, isPaused: false, isCompleted: false,
       hintTarget: null, hintBacktrack: null, note: null, activePtr: null, lastCell: null,
       dragSnap: null, dragChanged: false
@@ -4056,10 +4187,15 @@
 
     function checkZipWin() {
       const total = zipState.size * zipState.size;
-      if (zipState.path.length !== total) return;
-      if (zipState.numbers[zipState.path[0]] !== 1 || zipState.numbers[zipState.path[total - 1]] !== zipState.maxNumber) return;
+      if (zipState.mode === 'simple') {
+        if (zipState.path.length < zipState.maxNumber || zipState.path.length > total) return;
+      } else {
+        if (zipState.path.length !== total) return;
+      }
+      if (new Set(zipState.path).size !== zipState.path.length) return;
+      if (zipState.numbers[zipState.path[0]] !== 1 || zipState.numbers[zipState.path[zipState.path.length - 1]] !== zipState.maxNumber) return;
       let nextExp = 2;
-      for (let i = 0; i < total; i++) {
+      for (let i = 0; i < zipState.path.length; i++) {
         const c = zipState.path[i];
         if (i > 0 && (!zipOrtho(zipState.path[i - 1], c, zipState.size) || zipHasWall(zipState.path[i - 1], c, zipState.size, zipState.horizontalWalls, zipState.verticalWalls))) return;
         if (i > 0 && zipState.numbers[c] > 0) {
@@ -4088,10 +4224,10 @@
       if (typeof recordGateGameCompleted === 'function') recordGateGameCompleted();
     }
 
-    function startNewZip(size = 6) {
-      const p = generateZipPuzzle(size);
+    function startNewZip(size = 6, mode = zipState.mode || 'classic') {
+      const p = generateZipPuzzle(size, mode);
       zipState = {
-        size, numbers: p.numbers, maxNumber: p.maxNumber,
+        size, mode, numbers: p.numbers, maxNumber: p.maxNumber,
         horizontalWalls: p.horizontalWalls, verticalWalls: p.verticalWalls, solutionPath: p.solutionPath,
         path: [p.solutionPath[0]], history: [], elapsedSeconds: 0, isPaused: false, isCompleted: false,
         hintTarget: null, hintBacktrack: null, note: null, activePtr: null, lastCell: null,
@@ -4102,6 +4238,12 @@
         b.className = active
           ? 'zip-size-btn py-1.5 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-xs transition-all'
           : 'zip-size-btn py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+      });
+      document.querySelectorAll('.zip-mode-btn').forEach(b => {
+        const active = b.dataset.zipMode === mode;
+        b.className = active
+          ? 'zip-mode-btn py-1.5 px-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-xs transition-all'
+          : 'zip-mode-btn py-1.5 px-2 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition-all';
       });
       renderZip();
     }
@@ -4117,13 +4259,15 @@
 
       document.getElementById('zip-timer-display').textContent = formatTime(zipState.elapsedSeconds);
       document.getElementById('zip-best-display').textContent = zipBestTimes[sz] !== null ? formatTime(zipBestTimes[sz]) : '--:--';
-      document.getElementById('zip-progress-text').textContent = `${zipState.path.length}/${total}`;
+      document.getElementById('zip-progress-text').textContent = zipState.mode === 'simple'
+        ? `${Math.min(zipState.maxNumber, nextExp - 1)}/${zipState.maxNumber}`
+        : `${zipState.path.length}/${total}`;
       document.getElementById('zip-next-text').textContent = nextExp <= zipState.maxNumber ? String(nextExp) : '✓';
       document.getElementById('zip-pause-icon').textContent = zipState.isPaused ? '▶' : '⏸';
       document.getElementById('btn-zip-undo').disabled = (zipState.history.length === 0 && zipState.path.length <= 1) || zipState.isPaused || zipState.isCompleted;
       document.getElementById('btn-zip-reset').disabled = zipState.path.length <= 1 || zipState.isPaused || zipState.isCompleted;
 
-      const earlyLast = headCell !== null && zipState.numbers[headCell] === zipState.maxNumber && zipState.path.length < total;
+      const earlyLast = zipState.mode !== 'simple' && headCell !== null && zipState.numbers[headCell] === zipState.maxNumber && zipState.path.length < total;
       const alertEl = document.getElementById('zip-alert');
       const alertMsg = earlyLast
         ? `Poslední číslo ${zipState.maxNumber} musí být až na konci cesty — zbývá projít ${total - zipState.path.length} políček.`
@@ -4245,9 +4389,9 @@
 
       const idx = zipState.path.indexOf(cell);
       if (idx !== -1) {
-        if (idx < zipState.path.length - 1) {
+        if (idx === zipState.path.length - 2) {
           sound.play(220);
-          zipCommitPath(zipState.path.slice(0, idx + 1));
+          zipCommitPath(zipState.path.slice(0, -1));
         }
         return;
       }
@@ -4269,9 +4413,9 @@
 
       const idx = zipState.path.indexOf(cell);
       if (idx !== -1) {
-        if (idx < zipState.path.length - 1) {
+        if (idx === zipState.path.length - 2) {
           sound.play(220);
-          zipCommitPath(zipState.path.slice(0, idx + 1));
+          zipCommitPath(zipState.path.slice(0, -1));
         }
         return;
       }
@@ -4304,9 +4448,12 @@
     zipBoardEl.addEventListener('pointercancel', endZipDrag);
 
     document.querySelectorAll('.zip-size-btn').forEach(btn => {
-      btn.addEventListener('click', () => startNewZip(parseInt(btn.dataset.zipSize, 10)));
+      btn.addEventListener('click', () => startNewZip(parseInt(btn.dataset.zipSize, 10), zipState.mode));
     });
-    document.getElementById('btn-zip-new').addEventListener('click', () => startNewZip(zipState.size));
+    document.querySelectorAll('.zip-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => startNewZip(zipState.size, btn.dataset.zipMode));
+    });
+    document.getElementById('btn-zip-new').addEventListener('click', () => startNewZip(zipState.size, zipState.mode));
     document.getElementById('btn-zip-pause').addEventListener('click', () => { zipState.isPaused = !zipState.isPaused; renderZip(); });
     document.getElementById('btn-zip-undo').addEventListener('click', () => {
       if (zipState.isPaused || zipState.isCompleted) return;
@@ -4329,6 +4476,46 @@
     });
     document.getElementById('btn-zip-hint').addEventListener('click', () => {
       if (zipState.isPaused || zipState.isCompleted) return;
+      if (zipState.mode === 'simple') {
+        const findBfsStep = (p) => {
+          const nextNum = zipNextExpected(p, zipState.numbers);
+          if (nextNum > zipState.maxNumber) return null;
+          const targetIdx = zipState.numbers.indexOf(nextNum);
+          if (targetIdx === -1) return null;
+          const head = p[p.length - 1], blocked = new Set(p);
+          const q = [head], parent = new Map([[head, -1]]);
+          while (q.length) {
+            const u = q.shift();
+            if (u === targetIdx) {
+              let cur = u;
+              while (parent.get(cur) !== head && parent.get(cur) !== -1) cur = parent.get(cur);
+              return cur;
+            }
+            for (const v of zipNeighbors(u, zipState.size)) {
+              if (parent.has(v) || blocked.has(v)) continue;
+              if (zipHasWall(u, v, zipState.size, zipState.horizontalWalls, zipState.verticalWalls)) continue;
+              const nv = zipState.numbers[v];
+              if (nv > 0 && nv !== nextNum) continue;
+              parent.set(v, u); q.push(v);
+            }
+          }
+          return null;
+        };
+        const step = findBfsStep(zipState.path);
+        if (step !== null) {
+          zipState.hintTarget = step; zipState.hintBacktrack = null;
+          zipState.note = 'Další správný krok je zvýrazněn oranžově.';
+          sound.play(600); renderZip(); return;
+        }
+        for (let len = zipState.path.length - 1; len >= 1; len--) {
+          if (findBfsStep(zipState.path.slice(0, len)) !== null) {
+            zipState.hintTarget = null; zipState.hintBacktrack = zipState.path[len - 1];
+            zipState.note = 'Cesta k dalšímu číslu je zablokovaná — vraťte se na červeně označené políčko.';
+            sound.play(600); renderZip(); return;
+          }
+        }
+        return;
+      }
       for (let i = 0; i < zipState.path.length; i++) {
         if (zipState.path[i] !== zipState.solutionPath[i]) {
           zipState.hintTarget = null;
