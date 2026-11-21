@@ -813,3 +813,107 @@ export function buildFillKeyboardKeys(
 
   return { keys, hasSpace };
 }
+
+/**
+ * Generates a ready-to-paste initial prompt for creating a valid JSON task set
+ * with the chosen subject area placed cleanly at the end.
+ */
+export function buildTaskGeneratorPrompt(
+  topic: string,
+  lang: Language = 'cs',
+  taskCount: number = 12
+): string {
+  const safeCount = Math.max(3, Math.min(50, Math.round(taskCount || 12)));
+  const cleanTopic = topic.trim();
+
+  if (lang === 'en') {
+    const topicLine = cleanTopic || '[ENTER SUBJECT AREA / TOPIC HERE]';
+    return [
+      `Create a set of ${safeCount} educational quiz tasks for a learning game.`,
+      `Return ONLY valid JSON (no extra text or explanation before or after the JSON) using this exact structure:`,
+      ``,
+      `{`,
+      `  "name": "Short set title",`,
+      `  "tasks": [`,
+      `    {`,
+      `      "type": "match",`,
+      `      "prompt": "Match the pairs",`,
+      `      "pairs": [`,
+      `        { "left": "Item A", "right": "Match A" },`,
+      `        { "left": "Item B", "right": "Match B" },`,
+      `        { "left": "Item C", "right": "Match C" },`,
+      `        { "left": "Item D", "right": "Match D" }`,
+      `      ]`,
+      `    },`,
+      `    {`,
+      `      "type": "fill",`,
+      `      "prompt": "Fill in the blank: ...",`,
+      `      "answer": "word",`,
+      `      "answers": ["word", "alternative"],`,
+      `      "hint": "Short helpful hint"`,
+      `    },`,
+      `    {`,
+      `      "type": "choice",`,
+      `      "prompt": "Question text?",`,
+      `      "options": ["Option A", "Option B", "Option C", "Option D"],`,
+      `      "correctIndex": 1`,
+      `    }`,
+      `  ]`,
+      `}`,
+      ``,
+      `Rules:`,
+      `- Mix all three task types evenly ("match", "fill", "choice").`,
+      `- For "match", include 3 to 4 unique pairs per task.`,
+      `- For "fill", keep the answer short (1-2 words or a number) and add a brief hint.`,
+      `- For "choice", include 4 options and set "correctIndex" (0 to 3) to the exact right option.`,
+      `- Make sure every question has a single unambiguous correct answer.`,
+      ``,
+      `Topic / subject area for the questions: ${topicLine}`,
+    ].join('\n');
+  }
+
+  const topicLine = cleanTopic || '[SEM DOPLŇTE OBLAST / TÉMA OTÁZEK]';
+  return [
+    `Vytvoř sadu ${safeCount} výukových úkolů pro vzdělávací hru.`,
+    `Vrať POUZE platný JSON (bez dalšího textu nebo vysvětlování před ani za JSONem) přesně v tomto formátu:`,
+    ``,
+    `{`,
+    `  "name": "Krátký název sady",`,
+    `  "tasks": [`,
+    `    {`,
+    `      "type": "match",`,
+    `      "prompt": "Spoj odpovídající dvojice",`,
+    `      "pairs": [`,
+    `        { "left": "Pojem A", "right": "Význam A" },`,
+    `        { "left": "Pojem B", "right": "Význam B" },`,
+    `        { "left": "Pojem C", "right": "Význam C" },`,
+    `        { "left": "Pojem D", "right": "Význam D" }`,
+    `      ]`,
+    `    },`,
+    `    {`,
+    `      "type": "fill",`,
+    `      "prompt": "Doplň chybějící slovo: ...",`,
+    `      "answer": "slovo",`,
+    `      "answers": ["slovo", "alternativa"],`,
+    `      "hint": "Krátká nápověda"`,
+    `    },`,
+    `    {`,
+    `      "type": "choice",`,
+    `      "prompt": "Znění otázky?",`,
+    `      "options": ["Možnost A", "Možnost B", "Možnost C", "Možnost D"],`,
+    `      "correctIndex": 1`,
+    `    }`,
+    `  ]`,
+    `}`,
+    ``,
+    `Pravidla:`,
+    `- Rovnoměrně střídej všechny 3 typy úloh ("match", "fill", "choice").`,
+    `- U typu "match" dej do každé úlohy 3 až 4 jedinečné dvojice.`,
+    `- U typu "fill" volte krátkou jednoznačnou odpověď (1–2 slova nebo číslo) a přidej stručnou nápovědu.`,
+    `- U typu "choice" dej 4 možnosti a nastav "correctIndex" (0 až 3) na správnou možnost.`,
+    `- Všechny otázky musí být jasné, věcně správné a bez překlepů.`,
+    ``,
+    `Oblast / téma, ze které budou otázky: ${topicLine}`,
+  ].join('\n');
+}
+

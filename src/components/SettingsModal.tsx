@@ -18,6 +18,9 @@ import {
   Globe,
   Loader2,
   Shuffle,
+  Copy,
+  Check,
+  MessageSquareText,
 } from 'lucide-react';
 import {
   LearningGateProgress,
@@ -29,6 +32,7 @@ import {
   DEFAULT_ENGLISH_TASKS_JSON,
   DEFAULT_EN_QUIZ_TASKS_JSON,
   RemoteCatalogItem,
+  buildTaskGeneratorPrompt,
   parseLearningTasksJson,
   parseRemoteTasksOrCatalog,
   validateTaskSourceUrl,
@@ -76,6 +80,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [draft, setDraft] = useState<LearningGateSettings>(settings);
   const [setName, setSetName] = useState<string>('');
   const [showSchemaHelp, setShowSchemaHelp] = useState(false);
+  const [showPromptBuilder, setShowPromptBuilder] = useState(false);
+  const [promptTopic, setPromptTopic] = useState<string>('');
+  const [promptCount, setPromptCount] = useState<number>(12);
+  const [promptCopied, setPromptCopied] = useState<boolean>(false);
   const [webUrl, setWebUrl] = useState<string>(() => loadLastTaskSourceUrl());
   const [isLoadingWeb, setIsLoadingWeb] = useState<boolean>(false);
   const [webCatalog, setWebCatalog] = useState<RemoteCatalogItem[]>([]);
@@ -96,6 +104,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setImportFeedback(null);
       setUpdateResult(null);
       setIsCheckingUpdate(false);
+      setPromptCopied(false);
       setWebUrl(loadLastTaskSourceUrl());
     }
   }, [isOpen, settings]);
@@ -112,7 +121,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     [draft.customJson, lang]
   );
 
+  const generatedPrompt = useMemo(
+    () => buildTaskGeneratorPrompt(promptTopic, lang, promptCount),
+    [promptTopic, lang, promptCount]
+  );
+
   if (!isOpen) return null;
+
+  const handleCopyPrompt = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(generatedPrompt);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = generatedPrompt;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setPromptCopied(true);
+      window.setTimeout(() => setPromptCopied(false), 2200);
+    } catch {
+      setPromptCopied(false);
+    }
+  };
 
   const applyImportedTaskSet = (
     normalizedJson: string,
@@ -945,7 +980,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <FileCode2 className="w-4 h-4 text-indigo-600" />
               <span>{pick('Zadání úkolů (JSON)', 'Task Definition (JSON)')}</span>
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPromptBuilder((prev) => !prev);
+                  setPromptCopied(false);
+                }}
+                className={`px-2 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                  showPromptBuilder
+                    ? 'border-indigo-500 bg-indigo-600 text-white'
+                    : 'border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800'
+                }`}
+              >
+                <MessageSquareText className="w-3 h-3" />
+                <span>{pick('Připravit prvotní prompt', 'Prepare prompt')}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowSchemaHelp((prev) => !prev)}
@@ -969,6 +1019,100 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Initial Prompt Builder Panel */}
+          {showPromptBuilder && (
+            <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <p className="text-xs font-extrabold text-indigo-950">
+                    {pick('Prvotní prompt pro vygenerování JSON úkolů', 'Initial prompt for generating JSON tasks')}
+                  </p>
+                  <p className="text-[11px] text-indigo-700">
+                    {pick(
+                      'Zadejte oblast otázek (vloží se na konec promptu), zkopírujte prompt a výsledek vložte dolů do JSON pole.',
+                      'Enter the question topic (placed at the end of the prompt), copy it, and paste the resulting JSON below.'
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={promptTopic}
+                  onChange={(e) => {
+                    setPromptTopic(e.target.value);
+                    if (promptCopied) setPromptCopied(false);
+                  }}
+                  placeholder={pick(
+                    'Oblast otázek (např. Angličtina 4. třída – jídlo, Násobilka, Evropa…)',
+                    'Topic / subject area (e.g. Grade 4 English – food, Multiplication, Europe…)'
+                  )}
+                  className="flex-1 px-3 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[11px] font-semibold text-indigo-800 mr-0.5">
+                    {pick('Počet:', 'Count:')}
+                  </span>
+                  {[6, 12, 20].map((cnt) => (
+                    <button
+                      key={cnt}
+                      type="button"
+                      onClick={() => {
+                        setPromptCount(cnt);
+                        if (promptCopied) setPromptCopied(false);
+                      }}
+                      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                        promptCount === cnt
+                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          : 'bg-white border-indigo-200 text-indigo-800 hover:bg-indigo-100'
+                      }`}
+                    >
+                      {cnt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <textarea
+                readOnly
+                value={generatedPrompt}
+                rows={7}
+                onFocus={(e) => e.currentTarget.select()}
+                className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white font-mono text-[10.5px] text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-indigo-700 font-medium">
+                  {promptTopic.trim()
+                    ? pick('Oblast je doplněná na konci promptu.', 'Topic is filled in at the end of the prompt.')
+                    : pick('Můžete doplnit oblast teď, nebo až po vložení na konec promptu.', 'Fill in the topic now or at the end after pasting.')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleCopyPrompt()}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors active:scale-95 ${
+                    promptCopied
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  }`}
+                >
+                  {promptCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{pick('Zkopírováno!', 'Copied!')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{pick('Kopírovat prompt', 'Copy prompt')}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
           {showSchemaHelp && (
             <pre className="p-2.5 rounded-xl bg-slate-900 text-slate-100 text-[10px] font-mono overflow-x-auto leading-relaxed">

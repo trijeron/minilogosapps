@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import { transformSync } from 'esbuild';
 import {
   buildFillKeyboardKeys,
+  buildTaskGeneratorPrompt,
   buildTaskHistoryEntry,
   DEFAULT_ENGLISH_TASKS,
   DEFAULT_ENGLISH_TASKS_JSON,
@@ -165,6 +166,26 @@ test('buildFillKeyboardKeys includes all answer characters plus 1-2 unique distr
   assert.ok(numKb.keys.every((k) => /^[0-9]$/.test(k)), 'Numeric answers should only have digit keys');
   const numExtras = numKb.keys.length - 2;
   assert.ok(numExtras >= 1 && numExtras <= 2);
+});
+
+test('buildTaskGeneratorPrompt includes JSON schema and puts topic at the end in cs and en', () => {
+  const csPrompt = buildTaskGeneratorPrompt('Angličtina 4. třída – zvířata', 'cs', 12);
+  assert.ok(csPrompt.includes('"type": "match"'));
+  assert.ok(csPrompt.includes('"type": "fill"'));
+  assert.ok(csPrompt.includes('"type": "choice"'));
+  assert.ok(csPrompt.includes('12'));
+  assert.ok(
+    csPrompt.trimEnd().endsWith('Oblast / téma, ze které budou otázky: Angličtina 4. třída – zvířata')
+  );
+
+  const csEmpty = buildTaskGeneratorPrompt('   ', 'cs', 6);
+  assert.ok(csEmpty.trimEnd().endsWith('[SEM DOPLŇTE OBLAST / TÉMA OTÁZEK]'));
+
+  const enPrompt = buildTaskGeneratorPrompt('Solar System planets', 'en', 20);
+  assert.ok(enPrompt.includes('20'));
+  assert.ok(
+    enPrompt.trimEnd().endsWith('Topic / subject area for the questions: Solar System planets')
+  );
 });
 
 test('selectTasksForBreak wraps around bank and getActiveLearningTasks falls back safely', () => {
