@@ -754,23 +754,6 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
         </div>
       </div>
 
-      {/* Kid-friendly Teaching Prompt */}
-      <div className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs sm:text-sm font-medium flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
-        <span>{guideText}</span>
-      </div>
-
-      {/* Rule Warning Banner (Follow suit violation) */}
-      {ruleWarning && (
-        <div
-          role="alert"
-          className="w-full px-3 py-2 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-xs font-bold flex items-center gap-2"
-        >
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-          <span>{ruleWarning}</span>
-        </div>
-      )}
-
       {/* Green Felt Card Table (#2d5a27 radial felt) */}
       <div
         className="w-full rounded-2xl border-4 border-[#183515] shadow-xl p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3 ring-1 ring-inset ring-amber-200/15"
@@ -1197,6 +1180,22 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
 
           {renderOpenCards('south', 'md', isSouthTurnByHuman)}
         </div>
+      </div>
+
+      {/* Rule Warning & Teaching Prompt below card table (no layout shift on table) */}
+      {ruleWarning && (
+        <div
+          role="alert"
+          className="w-full px-3 py-2 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-xs font-bold flex items-center gap-2"
+        >
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{ruleWarning}</span>
+        </div>
+      )}
+
+      <div className="w-full px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs sm:text-sm font-medium flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
+        <span>{guideText}</span>
       </div>
 
       <MinibridgeRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />

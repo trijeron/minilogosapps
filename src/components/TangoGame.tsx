@@ -595,15 +595,6 @@ export const TangoGame: React.FC<TangoGameProps> = ({
         realTimeCheck={realTimeCheck}
       />
 
-      {/* Prominent Warning Banner if Error/Conflict detected */}
-      {tangoError && (
-        <ErrorAlertBanner
-          hasError={true}
-          message={tangoError.message}
-          detail={tangoError.detail}
-        />
-      )}
-
       {/* Tango 6x6 Grid */}
       <div className="w-full flex items-center justify-center my-0.5">
         <TangoGrid
@@ -635,6 +626,15 @@ export const TangoGame: React.FC<TangoGameProps> = ({
         remainingMoons={remainingMoons}
         disabled={isPaused || isCompleted}
       />
+
+      {/* Prominent Warning Banner below playing area (no layout shift on board) */}
+      {tangoError && (
+        <ErrorAlertBanner
+          hasError={true}
+          message={tangoError.message}
+          detail={tangoError.detail}
+        />
+      )}
 
       {/* Victory Modal */}
       <VictoryModal

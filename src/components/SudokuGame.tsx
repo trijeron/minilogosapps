@@ -580,31 +580,6 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
         realTimeCheck={realTimeCheck}
       />
 
-      {/* Prominent Warning Banner if Error/Conflict detected (after 1s delay) */}
-      {realTimeCheck && (delayedConflicts.size > 0 || delayedIncorrect.size > 0) && (
-        <div className="w-full bg-rose-50 border-2 border-rose-400 rounded-xl p-2.5 flex items-start gap-2.5 text-rose-900 shadow-sm animate-in fade-in duration-150">
-          <div className="w-6 h-6 rounded-lg bg-rose-200 text-rose-700 flex items-center justify-center shrink-0 mt-0.5 font-bold">
-            ⚠️
-          </div>
-          <div className="flex-1 flex flex-col">
-            <span className="text-xs font-bold leading-tight text-rose-800">
-              {pick('Varování: Zjištěn konflikt v Sudoku!', 'Warning: Sudoku conflict detected!')}
-            </span>
-            <span className="text-[11px] text-rose-700 font-medium leading-tight mt-0.5">
-              {delayedConflicts.size > 0
-                ? pick(
-                    'Stejné číslo se opakuje v témže řádku, sloupci nebo bloku 2×3.',
-                    'The same digit is repeated in the same row, column, or 2×3 box.'
-                  )
-                : pick(
-                    'Některé zadané číslo neodpovídá správnému řešení.',
-                    'One of the entered digits does not match the correct solution.'
-                  )}
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* 6x6 Grid */}
       <div className="w-full flex items-center justify-center my-0.5">
         <SudokuGrid
@@ -636,6 +611,31 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
         remainingCounts={remainingCounts}
         disabled={isPaused || isCompleted}
       />
+
+      {/* Prominent Warning Banner below playing area (no layout shift on board) */}
+      {realTimeCheck && (delayedConflicts.size > 0 || delayedIncorrect.size > 0) && (
+        <div className="w-full bg-rose-50 border-2 border-rose-400 rounded-xl p-2.5 flex items-start gap-2.5 text-rose-900 shadow-sm animate-in fade-in duration-150">
+          <div className="w-6 h-6 rounded-lg bg-rose-200 text-rose-700 flex items-center justify-center shrink-0 mt-0.5 font-bold">
+            ⚠️
+          </div>
+          <div className="flex-1 flex flex-col">
+            <span className="text-xs font-bold leading-tight text-rose-800">
+              {pick('Varování: Zjištěn konflikt v Sudoku!', 'Warning: Sudoku conflict detected!')}
+            </span>
+            <span className="text-[11px] text-rose-700 font-medium leading-tight mt-0.5">
+              {delayedConflicts.size > 0
+                ? pick(
+                    'Stejné číslo se opakuje v témže řádku, sloupci nebo bloku 2×3.',
+                    'The same digit is repeated in the same row, column, or 2×3 box.'
+                  )
+                : pick(
+                    'Některé zadané číslo neodpovídá správnému řešení.',
+                    'One of the entered digits does not match the correct solution.'
+                  )}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Victory Celebration Modal */}
       <VictoryModal

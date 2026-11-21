@@ -564,35 +564,6 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
         </div>
       </div>
 
-      {/* Warning / Deadlock / Feedback Banner */}
-      {(isDeadlocked || statusNote) && (
-        <div
-          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 ${
-            isDeadlocked
-              ? 'bg-rose-50 border-rose-300 text-rose-900'
-              : 'bg-amber-50 border-amber-200 text-amber-900'
-          }`}
-        >
-          <span>
-            {isDeadlocked
-              ? pick(
-                  'Nezbývají žádné volné dvojice! Použijte Zpět nebo Zamíchat kameny.',
-                  'No free matching pairs left! Use Undo or Shuffle tiles.'
-                )
-              : statusNote}
-          </span>
-          {isDeadlocked && (
-            <button
-              type="button"
-              onClick={handleShuffle}
-              className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shrink-0"
-            >
-              {pick('Zamíchat', 'Shuffle')}
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Top Zoom & 3D Angle Bar */}
       <div className="w-full flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-50 border border-slate-200/90 rounded-xl">
         <button
@@ -655,25 +626,6 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           <span>{viewAngle === '3d' ? '3D' : '2D'}</span>
         </button>
       </div>
-
-      {/* Selected Tile Sticky Reminder (super helpful when zoomed on mobile) */}
-      {selectedTile && !isPaused && !isCompleted && (
-        <div className="w-full px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-semibold flex items-center justify-between gap-2">
-          <span>
-            {pick('Vybráno:', 'Selected:')}{' '}
-            <strong>{getMahjongTileLabel(selectedTile.def, lang)}</strong> —{' '}
-            {pick('klepněte na druhý stejný kámen', 'tap a matching tile')}
-          </span>
-          <button
-            type="button"
-            onClick={() => setSelectedUid(null)}
-            className="px-2 py-0.5 rounded-md bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 text-[11px] font-bold flex items-center gap-1 shrink-0"
-          >
-            <X className="w-3 h-3" />
-            <span>{pick('Zrušit', 'Cancel')}</span>
-          </button>
-        </div>
-      )}
 
       {/* Layered Mahjong Felt Mat (with Side-Angled 3D Stacks, Zoom & Pan) */}
       <div
@@ -802,6 +754,53 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           <span>{pick('Zamíchat', 'Shuffle')}</span>
         </button>
       </div>
+
+      {/* Selected Tile Reminder & Warning / Deadlock / Feedback Banners below playing area */}
+      {selectedTile && !isPaused && !isCompleted && (
+        <div className="w-full px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-semibold flex items-center justify-between gap-2">
+          <span>
+            {pick('Vybráno:', 'Selected:')}{' '}
+            <strong>{getMahjongTileLabel(selectedTile.def, lang)}</strong> —{' '}
+            {pick('klepněte na druhý stejný kámen', 'tap a matching tile')}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedUid(null)}
+            className="px-2 py-0.5 rounded-md bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 text-[11px] font-bold flex items-center gap-1 shrink-0"
+          >
+            <X className="w-3 h-3" />
+            <span>{pick('Zrušit', 'Cancel')}</span>
+          </button>
+        </div>
+      )}
+
+      {(isDeadlocked || statusNote) && (
+        <div
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 ${
+            isDeadlocked
+              ? 'bg-rose-50 border-rose-300 text-rose-900'
+              : 'bg-amber-50 border-amber-200 text-amber-900'
+          }`}
+        >
+          <span>
+            {isDeadlocked
+              ? pick(
+                  'Nezbývají žádné volné dvojice! Použijte Zpět nebo Zamíchat kameny.',
+                  'No free matching pairs left! Use Undo or Shuffle tiles.'
+                )
+              : statusNote}
+          </span>
+          {isDeadlocked && (
+            <button
+              type="button"
+              onClick={handleShuffle}
+              className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shrink-0"
+            >
+              {pick('Zamíchat', 'Shuffle')}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Victory Modal */}
       {showVictory && (

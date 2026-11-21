@@ -645,21 +645,6 @@ export const ZipGame: React.FC<ZipGameProps> = ({
         )}
       </div>
 
-      {/* Contextual Hint / Rule Tip Banner */}
-      {activeAlert && (
-        <div
-          className={`px-3 py-2 rounded-xl border text-xs font-semibold ${
-            reachedLastEarly || hintBacktrackCell !== null
-              ? 'bg-rose-50 border-rose-200 text-rose-800'
-              : hintTargetCell !== null
-              ? 'bg-amber-50 border-amber-200 text-amber-900'
-              : 'bg-slate-50 border-slate-200 text-slate-700'
-          }`}
-        >
-          {activeAlert}
-        </div>
-      )}
-
       {/* Zip Interactive Board */}
       <div className="w-full my-0.5">
         <ZipGrid
@@ -714,6 +699,21 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           <span>{pick('Nápověda', 'Hint')}</span>
         </button>
       </div>
+
+      {/* Contextual Hint / Rule Tip Banner below playing area */}
+      {activeAlert && (
+        <div
+          className={`px-3 py-2 rounded-xl border text-xs font-semibold ${
+            reachedLastEarly || hintBacktrackCell !== null
+              ? 'bg-rose-50 border-rose-200 text-rose-800'
+              : hintTargetCell !== null
+              ? 'bg-amber-50 border-amber-200 text-amber-900'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}
+        >
+          {activeAlert}
+        </div>
+      )}
 
       {/* Victory Modal */}
       <ZipVictoryModal

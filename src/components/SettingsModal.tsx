@@ -21,6 +21,7 @@ import {
   Copy,
   Check,
   MessageSquareText,
+  Wand2,
 } from 'lucide-react';
 import {
   LearningGateProgress,
@@ -93,6 +94,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   } | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
+  const [geminiTopic, setGeminiTopic] = useState<string>('');
+  const [geminiCount, setGeminiCount] = useState<number>(12);
+  const [isGeneratingGemini, setIsGeneratingGemini] = useState<boolean>(false);
+  const [geminiFeedback, setGeminiFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+    tasks?: LearningTask[];
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
@@ -102,6 +111,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setDraft(settings);
       setSetName('');
       setImportFeedback(null);
+      setGeminiFeedback(null);
+      setIsGeneratingGemini(false);
       setUpdateResult(null);
       setIsCheckingUpdate(false);
       setPromptCopied(false);
@@ -438,6 +449,90 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       window.setTimeout(() => {
         window.location.reload();
       }, 700);
+    }
+  };
+
+  const handleGenerateWithGemini = async () => {
+    const trimmedTopic = geminiTopic.trim();
+    if (!trimmedTopic) {
+      setGeminiFeedback({
+        type: 'error',
+        message: pick(
+          'Zadejte prosím oblast nebo téma otázek (např. Angličtina 4. třída – zvířata).',
+          'Please enter a topic or subject area (e.g. Grade 4 English – animals).'
+        ),
+      });
+      return;
+    }
+
+    if (isGeneratingGemini) return;
+    setIsGeneratingGemini(true);
+    setGeminiFeedback(null);
+
+    try {
+      const response = await fetch('/api/generate-tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: trimmedTopic,
+          count: geminiCount,
+          lang,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { name?: string; tasks?: unknown; error?: string }
+        | null;
+
+      if (!response.ok || !payload) {
+        throw new Error(
+          payload?.error ||
+            (isEn
+              ? `Server returned HTTP ${response.status}.`
+              : `Server vrátil chybu HTTP ${response.status}.`)
+        );
+      }
+
+      const rawJson = JSON.stringify(payload.tasks ?? [], null, 2);
+      const validated = parseLearningTasksJson(rawJson, lang);
+      if (!validated.ok) {
+        throw new Error(
+          validated.error ||
+            (isEn
+              ? 'Generated tasks did not pass validation.'
+              : 'Vygenerované úkoly neprošly kontrolou formátu.')
+        );
+      }
+
+      const normalizedJson = JSON.stringify(validated.tasks, null, 2);
+      const generatedName =
+        typeof payload.name === 'string' && payload.name.trim().length > 0
+          ? payload.name.trim()
+          : trimmedTopic;
+
+      setDraft((prev) => ({ ...prev, customJson: normalizedJson }));
+      setSetName(generatedName);
+      onSaveToHistory(normalizedJson, generatedName);
+      setGeminiFeedback({
+        type: 'success',
+        message: isEn
+          ? `Generated ${validated.tasks.length} tasks for "${generatedName}" and loaded them into the editor.`
+          : `Vygenerováno ${validated.tasks.length} úkolů pro „${generatedName}“ a rovnou připraveno k použití.`,
+        tasks: validated.tasks,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      setGeminiFeedback({
+        type: 'error',
+        message:
+          msg ||
+          pick(
+            'Nepodařilo se spojit se serverem pro generování úkolů přes Gemini.',
+            'Could not reach the server to generate tasks with Gemini.'
+          ),
+      });
+    } finally {
+      setIsGeneratingGemini(false);
     }
   };
 
@@ -829,6 +924,122 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               );
             })}
           </div>
+        </div>
+
+        {/* Generate Tasks Directly with Gemini */}
+        <div className="flex flex-col gap-2.5 p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-sky-50 border border-indigo-200/90 shadow-2xs">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <span className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
+                <Wand2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>
+                  {pick('Vygenerovat úkoly pomocí Gemini', 'Generate Tasks with Gemini')}
+                </span>
+              </span>
+              <p className="text-[11px] text-slate-600 mt-0.5">
+                {pick(
+                  'Stačí zadat oblast otázek — Gemini vytvoří kompletní sadu (spojování, doplňování i výběr) a rovnou ji nahraje do hry.',
+                  'Just enter a topic — Gemini creates a complete set (match, fill, and choice) and loads it straight into the game.'
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={geminiTopic}
+              onChange={(e) => {
+                setGeminiTopic(e.target.value);
+                if (geminiFeedback?.type === 'error') setGeminiFeedback(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleGenerateWithGemini();
+                }
+              }}
+              disabled={isGeneratingGemini}
+              placeholder={pick(
+                'Zadejte oblast (např. Angličtina 4. třída – jídlo, Násobilka, Evropa…)',
+                'Enter topic (e.g. Grade 4 English – food, Multiplication, Europe…)'
+              )}
+              className="flex-1 min-h-[40px] px-3 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
+            />
+            <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0">
+              <div className="flex items-center gap-1">
+                {[6, 12, 20].map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    disabled={isGeneratingGemini}
+                    onClick={() => setGeminiCount(cnt)}
+                    title={pick(`${cnt} úkolů`, `${cnt} tasks`)}
+                    className={`px-2 py-2 rounded-xl text-[11px] font-bold border transition-colors ${
+                      geminiCount === cnt
+                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        : 'bg-white border-indigo-200 text-indigo-800 hover:bg-indigo-50'
+                    }`}
+                  >
+                    {cnt}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={isGeneratingGemini}
+                onClick={() => void handleGenerateWithGemini()}
+                className="min-h-[40px] px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs transition-colors active:scale-95"
+              >
+                {isGeneratingGemini ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>{pick('Generuji…', 'Generating…')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-3.5 h-3.5" />
+                    <span>{pick('Vygenerovat', 'Generate')}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {geminiFeedback && (
+            <div
+              className={`px-3 py-2 rounded-xl border text-[11px] font-semibold flex items-center justify-between gap-2 ${
+                geminiFeedback.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-rose-50 border-rose-200 text-rose-800'
+              }`}
+            >
+              <span className="flex items-start gap-1.5">
+                {geminiFeedback.type === 'success' ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                )}
+                <span>{geminiFeedback.message}</span>
+              </span>
+              {geminiFeedback.type === 'success' && geminiFeedback.tasks && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onPreviewTasks(
+                      geminiFeedback.tasks!,
+                      effectiveTasksPerBreak,
+                      draft.randomOrder
+                    )
+                  }
+                  className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shrink-0"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>{pick('Vyzkoušet', 'Preview')}</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Import JSON Tasks from Phone (File / Folder) or Web URL */}

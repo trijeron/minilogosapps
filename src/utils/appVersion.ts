@@ -1,5 +1,5 @@
 export const APP_VERSION: string =
-  typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.5.2';
+  typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.6.1';
 
 export const APP_BUILD_DATE: string =
   typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '';

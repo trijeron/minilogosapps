@@ -604,15 +604,6 @@ export const QueensGame: React.FC<QueensGameProps> = ({
         realTimeCheck={realTimeCheck}
       />
 
-      {/* Prominent Warning Banner if Error/Conflict detected */}
-      {queensError && (
-        <ErrorAlertBanner
-          hasError={true}
-          message={queensError.message}
-          detail={queensError.detail}
-        />
-      )}
-
       {/* Queens Grid */}
       <div className="w-full flex items-center justify-center my-0.5">
         <QueensGrid
@@ -648,6 +639,15 @@ export const QueensGame: React.FC<QueensGameProps> = ({
         onToggleAutoCross={() => setAutoCross((prev) => !prev)}
         disabled={isPaused || isCompleted}
       />
+
+      {/* Prominent Warning Banner below playing area (no layout shift on board) */}
+      {queensError && (
+        <ErrorAlertBanner
+          hasError={true}
+          message={queensError.message}
+          detail={queensError.detail}
+        />
+      )}
 
       {/* Victory Celebration Modal */}
       <VictoryModal
