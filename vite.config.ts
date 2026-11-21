@@ -1,12 +1,23 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
 import path from 'path';
 import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
 
+const pkg = JSON.parse(
+  fs.readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf-8')
+) as {version?: string};
+const APP_VERSION = pkg.version || '1.0.0';
+const BUILD_DATE = new Date().toISOString().slice(0, 10);
+
 export default defineConfig(() => {
   return {
     base: './',
+    define: {
+      __APP_VERSION__: JSON.stringify(APP_VERSION),
+      __BUILD_DATE__: JSON.stringify(BUILD_DATE),
+    },
     plugins: [
       react(),
       tailwindcss(),

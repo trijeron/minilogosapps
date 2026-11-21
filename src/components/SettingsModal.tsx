@@ -9,7 +9,7 @@ import {
   FileCode2,
   History,
   Trash2,
-  Download,
+  RefreshCw,
   BookmarkPlus,
   Minus,
   Plus,
@@ -38,6 +38,12 @@ import {
   saveLastTaskSourceUrl,
 } from '../utils/storage';
 import { formatTime } from '../utils/format';
+import {
+  APP_BUILD_DATE,
+  APP_VERSION,
+  UpdateCheckResult,
+  checkForAppUpdate,
+} from '../utils/appVersion';
 import { PWAInstallButton } from './PWAInstallButton';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -77,6 +83,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
@@ -86,6 +94,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setDraft(settings);
       setSetName('');
       setImportFeedback(null);
+      setUpdateResult(null);
+      setIsCheckingUpdate(false);
       setWebUrl(loadLastTaskSourceUrl());
     }
   }, [isOpen, settings]);
@@ -382,6 +392,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onClose();
   };
 
+  const handleCheckUpdates = async () => {
+    if (isCheckingUpdate) return;
+    setIsCheckingUpdate(true);
+    setUpdateResult(null);
+    const result = await checkForAppUpdate();
+    setUpdateResult(result);
+    setIsCheckingUpdate(false);
+    if (result === 'updated') {
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl border border-slate-100 flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
@@ -397,8 +421,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </h2>
               <p className="text-xs text-slate-500">
                 {pick(
-                  'Limity, historie úkolů v sessionStorage a offline stažení',
-                  'Limits, task history in sessionStorage & offline download'
+                  `Limity, historie úkolů v sessionStorage · Verze v${APP_VERSION}`,
+                  `Limits, task history in sessionStorage · Version v${APP_VERSION}`
                 )}
               </p>
             </div>
@@ -1081,27 +1105,94 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Mobile App (PWA) Install Card */}
         <PWAInstallButton variant="card" />
 
-        {/* Offline HTML Download Card */}
-        <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold text-indigo-950">
-              {pick('Offline verze aplikace (6v1 HTML)', 'Offline App Version (6-in-1 HTML)')}
-            </p>
-            <p className="text-[11px] text-indigo-700">
-              {pick(
-                'Stáhněte všech 6 her jako jeden samostatný HTML soubor do PC nebo mobilu.',
-                'Download all 6 games as a single standalone HTML file for desktop or mobile.'
-              )}
-            </p>
+        {/* App Version & Check for Updates Card */}
+        <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex flex-col gap-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-xs font-bold text-indigo-950">
+                  {pick('Verze aplikace', 'App Version')}
+                </p>
+                <span className="px-2 py-0.5 rounded-md bg-white border border-indigo-200 text-[11px] font-mono font-bold text-indigo-800">
+                  v{APP_VERSION}
+                </span>
+                {APP_BUILD_DATE && (
+                  <span className="text-[11px] text-indigo-600/80 font-mono">
+                    ({APP_BUILD_DATE})
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-indigo-700 mt-0.5">
+                {pick(
+                  'Zkontrolujte, zda je k dispozici novější verze aplikace.',
+                  'Check whether a newer version of the app is available.'
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCheckUpdates}
+              disabled={isCheckingUpdate}
+              className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-bold whitespace-nowrap shadow-xs flex items-center justify-center gap-1.5 shrink-0 transition-colors active:scale-95"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${isCheckingUpdate ? 'animate-spin' : ''}`}
+              />
+              <span>
+                {isCheckingUpdate
+                  ? pick('Kontroluji…', 'Checking…')
+                  : pick('Zkontrolovat aktualizace', 'Check for updates')}
+              </span>
+            </button>
           </div>
-          <a
-            href="./minisudoku.html"
-            download="logicke_hry_6v1.html"
-            className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold whitespace-nowrap shadow-xs flex items-center gap-1.5 shrink-0 transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>{pick('Stáhnout HTML', 'Download HTML')}</span>
-          </a>
+
+          {updateResult && (
+            <div
+              className={`px-3 py-2 rounded-xl text-[11px] font-semibold flex items-center justify-between gap-2 ${
+                updateResult === 'updated' || updateResult === 'up-to-date'
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                  : updateResult === 'no-sw'
+                  ? 'bg-white border border-indigo-200 text-indigo-900'
+                  : 'bg-amber-50 border border-amber-200 text-amber-900'
+              }`}
+            >
+              <span>
+                {updateResult === 'updated'
+                  ? pick(
+                      'Nalezena nová verze! Aplikace se právě aktualizuje…',
+                      'New version found! Updating the app now…'
+                    )
+                  : updateResult === 'up-to-date'
+                  ? pick(
+                      `Máte nejnovější dostupnou verzi (v${APP_VERSION}).`,
+                      `You already have the latest version (v${APP_VERSION}).`
+                    )
+                  : updateResult === 'no-sw'
+                  ? pick(
+                      `Aktuální verze: v${APP_VERSION}. Pro jistotu můžete aplikaci ručně obnovit.`,
+                      `Current version: v${APP_VERSION}. You can reload manually to refresh.`
+                    )
+                  : updateResult === 'offline'
+                  ? pick(
+                      'Jste offline — pro kontrolu aktualizací se připojte k internetu.',
+                      'You are offline — connect to the internet to check for updates.'
+                    )
+                  : pick(
+                      'Kontrolu aktualizací se nepodařilo dokončit. Zkuste to prosím znovu.',
+                      'Could not check for updates. Please try again.'
+                    )}
+              </span>
+              {(updateResult === 'up-to-date' || updateResult === 'no-sw') && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="px-2 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-bold shrink-0"
+                >
+                  {pick('Obnovit', 'Reload')}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

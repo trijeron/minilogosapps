@@ -735,4 +735,81 @@ export function parseRemoteTasksOrCatalog(
   };
 }
 
+export interface FillKeyboardLayout {
+  keys: string[];
+  hasSpace: boolean;
+}
 
+const LATIN_DISTRACTOR_POOL = [
+  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'k', 'l',
+  'm', 'n', 'o', 'p', 'r', 's', 't', 'u', 'v', 'w', 'y',
+];
+const CZECH_DIACRITIC_POOL = ['á', 'č', 'é', 'ě', 'í', 'ř', 'š', 'ý', 'ž'];
+const DIGIT_DISTRACTOR_POOL = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+/**
+ * Builds a shuffled on-screen keyboard containing all unique characters needed
+ * for a fill-in-the-blank answer plus 1–2 extra distractor keys (ideal for mobile).
+ */
+export function buildFillKeyboardKeys(
+  task: FillLearningTask,
+  rng: () => number = Math.random
+): FillKeyboardLayout {
+  const normalized = task.answer.trim().replace(/\s+/g, ' ');
+  const hasSpace = normalized.includes(' ');
+
+  const uniqueChars: string[] = [];
+  const seen = new Set<string>();
+  for (const ch of Array.from(normalized)) {
+    if (ch === ' ') continue;
+    const key = ch.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueChars.push(key);
+    }
+  }
+
+  const isNumericOnly =
+    uniqueChars.length > 0 && uniqueChars.every((ch) => /^[0-9]$/.test(ch));
+  const hasCzechChars = uniqueChars.some((ch) => /[áčďéěíňóřšťúůýž]/.test(ch));
+
+  const basePool = isNumericOnly
+    ? DIGIT_DISTRACTOR_POOL
+    : hasCzechChars
+    ? [...LATIN_DISTRACTOR_POOL, ...CZECH_DIACRITIC_POOL]
+    : LATIN_DISTRACTOR_POOL;
+
+  const availableDistractors = basePool.filter((ch) => !seen.has(ch));
+  const desiredExtras =
+    availableDistractors.length === 0
+      ? 0
+      : uniqueChars.length >= 9
+      ? 1
+      : rng() < 0.35
+      ? 1
+      : 2;
+  const extraCount = Math.min(desiredExtras, availableDistractors.length);
+
+  // Pick unique distractors using Fisher-Yates partial shuffle
+  const poolCopy = [...availableDistractors];
+  const extras: string[] = [];
+  for (let i = 0; i < extraCount; i++) {
+    const pickIdx = i + Math.floor(rng() * (poolCopy.length - i));
+    [poolCopy[i], poolCopy[pickIdx]] = [poolCopy[pickIdx], poolCopy[i]];
+    extras.push(poolCopy[i]);
+  }
+
+  const keys = [...uniqueChars, ...extras];
+  for (let i = keys.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [keys[i], keys[j]] = [keys[j], keys[i]];
+  }
+
+  // Avoid accidentally spelling out the exact answer left-to-right when shuffled
+  const compactAnswer = normalized.replace(/\s+/g, '').toLowerCase();
+  if (keys.length >= 2 && keys.join('') === compactAnswer) {
+    [keys[0], keys[1]] = [keys[1], keys[0]];
+  }
+
+  return { keys, hasSpace };
+}

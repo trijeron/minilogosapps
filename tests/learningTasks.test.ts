@@ -5,6 +5,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { transformSync } from 'esbuild';
 import {
+  buildFillKeyboardKeys,
   buildTaskHistoryEntry,
   DEFAULT_ENGLISH_TASKS,
   DEFAULT_ENGLISH_TASKS_JSON,
@@ -118,6 +119,52 @@ test('isFillAnswerCorrect and normalizeAnswerText handle whitespace, case, and a
   assert.equal(isFillAnswerCorrect(task, '  an   Apple '), true);
   assert.equal(isFillAnswerCorrect(task, 'banana'), false);
   assert.equal(isFillAnswerCorrect(task, '   '), false);
+});
+
+test('buildFillKeyboardKeys includes all answer characters plus 1-2 unique distractors', () => {
+  let seed = 7;
+  const rng = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+
+  // Standard English word with duplicate letter ('p')
+  const wordKb = buildFillKeyboardKeys(
+    { type: 'fill', prompt: 'Jablko', answer: 'apple' },
+    rng
+  );
+  assert.equal(wordKb.hasSpace, false);
+  for (const ch of ['a', 'p', 'l', 'e']) {
+    assert.equal(wordKb.keys.includes(ch), true, `Missing required letter "${ch}"`);
+  }
+  assert.equal(new Set(wordKb.keys).size, wordKb.keys.length, 'Keys must be unique');
+  const wordExtras = wordKb.keys.length - 4;
+  assert.ok(wordExtras >= 1 && wordExtras <= 2, `Expected 1-2 extra keys, got ${wordExtras}`);
+
+  // Multi-word answer exposes space key
+  const phraseKb = buildFillKeyboardKeys(
+    { type: 'fill', prompt: 'Děkuji', answer: 'Thank you' },
+    rng
+  );
+  assert.equal(phraseKb.hasSpace, true);
+  for (const ch of ['t', 'h', 'a', 'n', 'k', 'y', 'o', 'u']) {
+    assert.equal(phraseKb.keys.includes(ch), true);
+  }
+  assert.equal(phraseKb.keys.includes(' '), false);
+  const phraseExtras = phraseKb.keys.length - 8;
+  assert.ok(phraseExtras >= 1 && phraseExtras <= 2);
+
+  // Numeric answer uses digit distractors
+  const numKb = buildFillKeyboardKeys(
+    { type: 'fill', prompt: '7 × 8', answer: '56' },
+    rng
+  );
+  assert.equal(numKb.hasSpace, false);
+  assert.equal(numKb.keys.includes('5'), true);
+  assert.equal(numKb.keys.includes('6'), true);
+  assert.ok(numKb.keys.every((k) => /^[0-9]$/.test(k)), 'Numeric answers should only have digit keys');
+  const numExtras = numKb.keys.length - 2;
+  assert.ok(numExtras >= 1 && numExtras <= 2);
 });
 
 test('selectTasksForBreak wraps around bank and getActiveLearningTasks falls back safely', () => {

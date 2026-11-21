@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BookOpen, CheckCircle2, ArrowRight, Lightbulb, X, AlertCircle, RotateCcw, SkipForward } from 'lucide-react';
+import { BookOpen, CheckCircle2, ArrowRight, Lightbulb, X, AlertCircle, RotateCcw, SkipForward, Delete } from 'lucide-react';
 import { LearningTask, MatchLearningTask, FillLearningTask, ChoiceLearningTask } from '../types/learningGate';
-import { isFillAnswerCorrect } from '../utils/learningTasks';
+import { buildFillKeyboardKeys, isFillAnswerCorrect } from '../utils/learningTasks';
 import { sound } from '../utils/audio';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -95,6 +95,24 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
     if (!currentTask || currentTask.type !== 'match') return [];
     return shuffleWithIndices(currentTask.pairs.length);
   }, [currentTask, taskIdx, isOpen]);
+
+  // Shuffled on-screen keyboard (all letters of the answer + 1–2 distractors) for fill tasks
+  const fillKeyboard = useMemo(() => {
+    if (!currentTask || currentTask.type !== 'fill') {
+      return { keys: [] as string[], hasSpace: false };
+    }
+    return buildFillKeyboardKeys(currentTask);
+  }, [currentTask, taskIdx, isOpen]);
+
+  const isTouchDevice = () =>
+    typeof window !== 'undefined' &&
+    Boolean(window.matchMedia?.('(pointer: coarse)').matches);
+
+  useEffect(() => {
+    if (isOpen && currentTask?.type === 'fill' && !isTouchDevice()) {
+      fillInputRef.current?.focus();
+    }
+  }, [isOpen, taskIdx, currentTask]);
 
   if (!isOpen || !currentTask) return null;
 
@@ -190,7 +208,23 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
     setFillInput('');
     setErrorMsg(null);
     sound.playErase();
-    fillInputRef.current?.focus();
+    if (!isTouchDevice()) {
+      fillInputRef.current?.focus();
+    }
+  };
+
+  const handleVirtualKeyPress = (char: string) => {
+    if (taskSolved) return;
+    setFillInput((prev) => prev + char);
+    if (errorMsg) setErrorMsg(null);
+    sound.playNote();
+  };
+
+  const handleVirtualBackspace = () => {
+    if (taskSolved || fillInput.length === 0) return;
+    setFillInput((prev) => prev.slice(0, -1));
+    if (errorMsg) setErrorMsg(null);
+    sound.playErase();
   };
 
   const handleSkipFill = (task: FillLearningTask) => {
@@ -210,7 +244,9 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
     }
     if (fillInput.trim().length === 0) {
       setErrorMsg(pick('Nejprve napiš odpověď.', 'Please type an answer first.'));
-      fillInputRef.current?.focus();
+      if (!isTouchDevice()) {
+        fillInputRef.current?.focus();
+      }
       return;
     }
     if (isFillAnswerCorrect(task, fillInput)) {
@@ -408,8 +444,7 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
                     if (errorMsg) setErrorMsg(null);
                   }}
                   disabled={taskSolved}
-                  autoFocus
-                  placeholder={pick('Napiš odpověď...', 'Type your answer...')}
+                  placeholder={pick('Napiš nebo naklikej odpověď...', 'Type or tap letters...')}
                   className={`w-full min-h-[44px] pl-3.5 ${
                     !taskSolved && fillInput.length > 0 ? 'pr-9' : 'pr-3.5'
                   } py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
@@ -439,6 +474,46 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
                 </button>
               )}
             </div>
+
+            {/* On-screen letter keyboard (answer letters + 1-2 extra) for comfortable phone input */}
+            {!taskSolved && fillKeyboard.keys.length > 0 && (
+              <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  {fillKeyboard.keys.map((char, idx) => (
+                    <button
+                      key={`${char}-${idx}`}
+                      type="button"
+                      onClick={() => handleVirtualKeyPress(char)}
+                      aria-label={char}
+                      className="min-w-[44px] h-11 px-3 rounded-xl bg-white border border-slate-200 border-b-2 border-b-slate-300 shadow-2xs text-base font-extrabold text-slate-900 hover:bg-indigo-50 hover:border-indigo-300 active:translate-y-[1px] active:bg-indigo-100 transition-all select-none flex items-center justify-center"
+                    >
+                      {char}
+                    </button>
+                  ))}
+
+                  {fillKeyboard.hasSpace && (
+                    <button
+                      type="button"
+                      onClick={() => handleVirtualKeyPress(' ')}
+                      className="min-w-[82px] h-11 px-3 rounded-xl bg-white border border-slate-200 border-b-2 border-b-slate-300 shadow-2xs text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:translate-y-[1px] active:bg-indigo-100 transition-all select-none flex items-center justify-center"
+                    >
+                      {pick('Mezera', 'Space')}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleVirtualBackspace}
+                    disabled={fillInput.length === 0}
+                    title={pick('Smazat poslední znak', 'Delete last character')}
+                    aria-label={pick('Smazat poslední znak', 'Delete last character')}
+                    className="min-w-[48px] h-11 px-3 rounded-xl bg-slate-200/80 hover:bg-slate-300/80 disabled:opacity-40 border border-slate-300 border-b-2 border-b-slate-400/70 text-slate-800 active:translate-y-[1px] transition-all select-none flex items-center justify-center"
+                  >
+                    <Delete className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Reset word & Skip after 2 wrong attempts toolbar */}
             {!taskSolved && (
