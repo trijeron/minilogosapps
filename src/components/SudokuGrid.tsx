@@ -1,6 +1,7 @@
 import React from 'react';
 import { Lightbulb, Play } from 'lucide-react';
 import { BOARD_SIZE, getBlockIndex } from '../utils/sudokuEngine';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface SudokuGridProps {
   board: number[];
@@ -29,6 +30,7 @@ export const SudokuGrid: React.FC<SudokuGridProps> = ({
   isPaused,
   onResume,
 }) => {
+  const { pick } = useLanguage();
   const selectedRow = selectedCell !== null ? Math.floor(selectedCell / BOARD_SIZE) : null;
   const selectedCol = selectedCell !== null ? selectedCell % BOARD_SIZE : null;
   const selectedBlock =
@@ -102,7 +104,10 @@ export const SudokuGrid: React.FC<SudokuGridProps> = ({
               key={idx}
               type="button"
               onClick={() => onSelectCell(idx)}
-              aria-label={`Řádek ${row + 1}, sloupec ${col + 1}, hodnota ${value || 'prázdné'}`}
+              aria-label={pick(
+                `Řádek ${row + 1}, sloupec ${col + 1}, hodnota ${value || 'prázdné'}`,
+                `Row ${row + 1}, column ${col + 1}, value ${value || 'empty'}`
+              )}
               className={`relative flex items-center justify-center cursor-pointer transition-colors select-none active:scale-[0.98] ${borderClasses} ${bgClass}`}
             >
               {/* Main Digit */}
@@ -127,7 +132,7 @@ export const SudokuGrid: React.FC<SudokuGridProps> = ({
               {/* Little Hint Badge */}
               {isHint && (
                 <div
-                  title="Vyplněno nápovědou"
+                  title={pick('Vyplněno nápovědou', 'Filled by hint')}
                   className="absolute top-1 right-1 text-amber-500 pointer-events-none"
                 >
                   <Lightbulb className="w-2.5 h-2.5 fill-amber-400" />
@@ -144,15 +149,18 @@ export const SudokuGrid: React.FC<SudokuGridProps> = ({
           <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
             <Play className="w-6 h-6 fill-white ml-0.5" />
           </div>
-          <h3 className="text-base font-bold mb-1">Hra je pozastavena</h3>
+          <h3 className="text-base font-bold mb-1">{pick('Hra je pozastavena', 'Game paused')}</h3>
           <p className="text-xs text-slate-300 mb-4 max-w-[200px]">
-            Hrací pole je skryté, aby se nezastavoval čas při prohlížení.
+            {pick(
+              'Hrací pole je skryté, aby se nezastavoval čas při prohlížení.',
+              'The board is hidden while the timer is paused.'
+            )}
           </p>
           <button
             onClick={onResume}
             className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs tracking-wide shadow-md active:scale-95 transition-transform"
           >
-            Pokračovat ve hře
+            {pick('Pokračovat ve hře', 'Resume game')}
           </button>
         </div>
       )}

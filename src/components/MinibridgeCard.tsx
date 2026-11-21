@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from '../types/minibridge';
-import { getCardHcp, getRankLabel, SUIT_INFO } from '../utils/minibridgeEngine';
+import { getCardHcp, getRankLabel, getSuitLabel, SUIT_INFO } from '../utils/minibridgeEngine';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface MinibridgeCardProps {
   card?: Card;
@@ -33,6 +34,7 @@ export const MinibridgeCard: React.FC<MinibridgeCardProps> = ({
   title,
   className = '',
 }) => {
+  const { lang } = useLanguage();
   const effectiveOverlap = overlapMode ?? (overlap ? 'fan' : 'none');
   const isOverlapped = effectiveOverlap !== 'none';
 
@@ -112,7 +114,7 @@ export const MinibridgeCard: React.FC<MinibridgeCardProps> = ({
       onClick={onClick}
       disabled={!onClick}
       title={title}
-      aria-label={`${rankLabel} ${info.labelCs}${hcp > 0 ? ` (${hcp} HCP)` : ''}`}
+      aria-label={`${rankLabel} ${getSuitLabel(card.suit, lang)}${hcp > 0 ? ` (${hcp} HCP)` : ''}`}
       className={`relative ${sizeClasses} ${cardSurface} border ${borderClass} flex flex-col justify-between p-1.5 select-none transition-all duration-150 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 ${colorClass} ${interactiveClasses} ${winningClasses} ${overlapMargin} ${className}`}
     >
       {/* Subtle solid inner frame */}

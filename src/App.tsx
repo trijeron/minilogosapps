@@ -31,10 +31,12 @@ import {
   saveLearningTaskToHistory,
 } from './utils/storage';
 import { sound } from './utils/audio';
+import { useLanguage } from './i18n/LanguageContext';
 
 const ACTIVE_TAB_KEY = 'logic_games_active_tab_v1';
 
 export default function App() {
+  const { lang } = useLanguage();
   const [activeTab, setActiveTab] = useState<GameTab>(() => {
     try {
       const saved = sessionStorage.getItem(ACTIVE_TAB_KEY);
@@ -236,10 +238,10 @@ export default function App() {
   };
 
   const handleSaveTaskToHistory = useCallback((rawJson: string, setName?: string) => {
-    const entry = buildTaskHistoryEntry(rawJson, setName);
+    const entry = buildTaskHistoryEntry(rawJson, setName, lang);
     if (!entry) return;
     setTaskHistory(saveLearningTaskToHistory(entry));
-  }, []);
+  }, [lang]);
 
   const handleDeleteTaskHistory = useCallback((id: string) => {
     setTaskHistory(deleteLearningTaskFromHistory(id));
@@ -248,7 +250,7 @@ export default function App() {
   const handleSaveSettings = (next: LearningGateSettings, setName?: string) => {
     const jsonChanged = next.customJson.trim() !== gateSettings.customJson.trim();
     setGateSettings(next);
-    const entry = buildTaskHistoryEntry(next.customJson, setName);
+    const entry = buildTaskHistoryEntry(next.customJson, setName, lang);
     if (entry) {
       const alreadyExists = taskHistory.some(
         (h) => h.json.trim() === entry.json && (!setName || h.name === setName)

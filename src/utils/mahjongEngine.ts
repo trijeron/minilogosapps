@@ -1,15 +1,29 @@
 import { MahjongLayoutId, MahjongTile, MahjongTileDef } from '../types/mahjong';
+import { Language } from '../i18n/LanguageContext';
 
 export const MAHJONG_MAX_HINTS = 10;
 
 export const MAHJONG_LAYOUT_META: Record<
   MahjongLayoutId,
-  { labelCs: string; tileCount: number; cols: number; rows: number }
+  { labelCs: string; labelEn: string; tileCount: number; cols: number; rows: number }
 > = {
-  pyramid: { labelCs: 'Pyramida (72)', tileCount: 72, cols: 8, rows: 5 },
-  bridge: { labelCs: 'Most (96)', tileCount: 96, cols: 10, rows: 6 },
-  turtle: { labelCs: 'Želva (144)', tileCount: 144, cols: 15, rows: 8 },
+  pyramid: { labelCs: 'Pyramida (72)', labelEn: 'Pyramid (72)', tileCount: 72, cols: 8, rows: 5 },
+  bridge: { labelCs: 'Most (96)', labelEn: 'Bridge (96)', tileCount: 96, cols: 10, rows: 6 },
+  turtle: { labelCs: 'Želva (144)', labelEn: 'Turtle (144)', tileCount: 144, cols: 15, rows: 8 },
 };
+
+export function getMahjongLayoutLabel(layout: MahjongLayoutId, lang: Language = 'cs'): string {
+  const meta = MAHJONG_LAYOUT_META[layout];
+  return lang === 'en' ? meta.labelEn : meta.labelCs;
+}
+
+export function getMahjongTileLabel(def: MahjongTileDef, lang: Language = 'cs'): string {
+  return lang === 'en' ? def.labelEn || def.labelCs : def.labelCs;
+}
+
+export function getMahjongTileCorner(def: MahjongTileDef, lang: Language = 'cs'): string {
+  return lang === 'en' ? def.cornerTextEn || def.cornerText : def.cornerText;
+}
 
 const CHAR_KANJI = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
 const DOTS_SYMBOLS = ['🀙', '🀚', '🀛', '🀜', '🀝', '🀞', '🀟', '🀠', '🀡'];
@@ -25,8 +39,10 @@ function buildTileCatalog(): MahjongTileDef[] {
       suit: 'dots',
       rank: n,
       labelCs: `Puntíky ${n}`,
+      labelEn: `Dots ${n}`,
       symbol: DOTS_SYMBOLS[n - 1],
       cornerText: String(n),
+      cornerTextEn: String(n),
     });
   }
 
@@ -37,8 +53,10 @@ function buildTileCatalog(): MahjongTileDef[] {
       suit: 'bamboo',
       rank: n,
       labelCs: `Bambus ${n}`,
+      labelEn: `Bamboo ${n}`,
       symbol: BAMBOO_SYMBOLS[n - 1],
       cornerText: String(n),
+      cornerTextEn: String(n),
     });
   }
 
@@ -49,16 +67,18 @@ function buildTileCatalog(): MahjongTileDef[] {
       suit: 'chars',
       rank: n,
       labelCs: `Znak ${n}`,
+      labelEn: `Character ${n}`,
       symbol: CHAR_KANJI[n - 1],
       cornerText: String(n),
+      cornerTextEn: String(n),
     });
   }
 
   const winds = [
-    { key: 'east', sym: '東', corner: 'V', label: 'Východní vítr' },
-    { key: 'south', sym: '南', corner: 'J', label: 'Jižní vítr' },
-    { key: 'west', sym: '西', corner: 'Z', label: 'Západní vítr' },
-    { key: 'north', sym: '北', corner: 'S', label: 'Severní vítr' },
+    { key: 'east', sym: '東', corner: 'V', cornerEn: 'E', label: 'Východní vítr', labelEn: 'East Wind' },
+    { key: 'south', sym: '南', corner: 'J', cornerEn: 'S', label: 'Jižní vítr', labelEn: 'South Wind' },
+    { key: 'west', sym: '西', corner: 'Z', cornerEn: 'W', label: 'Západní vítr', labelEn: 'West Wind' },
+    { key: 'north', sym: '北', corner: 'S', cornerEn: 'N', label: 'Severní vítr', labelEn: 'North Wind' },
   ];
   winds.forEach((w, idx) => {
     catalog.push({
@@ -67,15 +87,17 @@ function buildTileCatalog(): MahjongTileDef[] {
       suit: 'winds',
       rank: idx + 1,
       labelCs: w.label,
+      labelEn: w.labelEn,
       symbol: w.sym,
       cornerText: w.corner,
+      cornerTextEn: w.cornerEn,
     });
   });
 
   const dragons = [
-    { key: 'red', sym: '中', corner: 'Č', label: 'Červený drak' },
-    { key: 'green', sym: '發', corner: 'Z', label: 'Zelený drak' },
-    { key: 'white', sym: '白', corner: 'B', label: 'Bílý drak' },
+    { key: 'red', sym: '中', corner: 'Č', cornerEn: 'R', label: 'Červený drak', labelEn: 'Red Dragon' },
+    { key: 'green', sym: '發', corner: 'Z', cornerEn: 'G', label: 'Zelený drak', labelEn: 'Green Dragon' },
+    { key: 'white', sym: '白', corner: 'B', cornerEn: 'W', label: 'Bílý drak', labelEn: 'White Dragon' },
   ];
   dragons.forEach((d, idx) => {
     catalog.push({
@@ -84,8 +106,10 @@ function buildTileCatalog(): MahjongTileDef[] {
       suit: 'dragons',
       rank: idx + 1,
       labelCs: d.label,
+      labelEn: d.labelEn,
       symbol: d.sym,
       cornerText: d.corner,
+      cornerTextEn: d.cornerEn,
     });
   });
 
@@ -95,17 +119,17 @@ function buildTileCatalog(): MahjongTileDef[] {
 const STANDARD_34_DEFS = buildTileCatalog();
 
 const FLOWER_DEFS: MahjongTileDef[] = [
-  { kindId: 'flower-1', matchGroup: 'group-flower', suit: 'flowers', rank: 1, labelCs: 'Květina (Švestka)', symbol: '🌸', cornerText: 'K' },
-  { kindId: 'flower-2', matchGroup: 'group-flower', suit: 'flowers', rank: 2, labelCs: 'Květina (Orchidej)', symbol: '🌺', cornerText: 'K' },
-  { kindId: 'flower-3', matchGroup: 'group-flower', suit: 'flowers', rank: 3, labelCs: 'Květina (Chryzantéma)', symbol: '🌻', cornerText: 'K' },
-  { kindId: 'flower-4', matchGroup: 'group-flower', suit: 'flowers', rank: 4, labelCs: 'Květina (Bambus)', symbol: '🪷', cornerText: 'K' },
+  { kindId: 'flower-1', matchGroup: 'group-flower', suit: 'flowers', rank: 1, labelCs: 'Květina (Švestka)', labelEn: 'Flower (Plum)', symbol: '🌸', cornerText: 'K', cornerTextEn: 'F' },
+  { kindId: 'flower-2', matchGroup: 'group-flower', suit: 'flowers', rank: 2, labelCs: 'Květina (Orchidej)', labelEn: 'Flower (Orchid)', symbol: '🌺', cornerText: 'K', cornerTextEn: 'F' },
+  { kindId: 'flower-3', matchGroup: 'group-flower', suit: 'flowers', rank: 3, labelCs: 'Květina (Chryzantéma)', labelEn: 'Flower (Chrysanthemum)', symbol: '🌻', cornerText: 'K', cornerTextEn: 'F' },
+  { kindId: 'flower-4', matchGroup: 'group-flower', suit: 'flowers', rank: 4, labelCs: 'Květina (Bambus)', labelEn: 'Flower (Bamboo)', symbol: '🪷', cornerText: 'K', cornerTextEn: 'F' },
 ];
 
 const SEASON_DEFS: MahjongTileDef[] = [
-  { kindId: 'season-1', matchGroup: 'group-season', suit: 'seasons', rank: 1, labelCs: 'Jaro', symbol: '🌱', cornerText: 'R' },
-  { kindId: 'season-2', matchGroup: 'group-season', suit: 'seasons', rank: 2, labelCs: 'Léto', symbol: '☀️', cornerText: 'R' },
-  { kindId: 'season-3', matchGroup: 'group-season', suit: 'seasons', rank: 3, labelCs: 'Podzim', symbol: '🍁', cornerText: 'R' },
-  { kindId: 'season-4', matchGroup: 'group-season', suit: 'seasons', rank: 4, labelCs: 'Zima', symbol: '❄️', cornerText: 'R' },
+  { kindId: 'season-1', matchGroup: 'group-season', suit: 'seasons', rank: 1, labelCs: 'Jaro', labelEn: 'Spring', symbol: '🌱', cornerText: 'R', cornerTextEn: 'S' },
+  { kindId: 'season-2', matchGroup: 'group-season', suit: 'seasons', rank: 2, labelCs: 'Léto', labelEn: 'Summer', symbol: '☀️', cornerText: 'R', cornerTextEn: 'S' },
+  { kindId: 'season-3', matchGroup: 'group-season', suit: 'seasons', rank: 3, labelCs: 'Podzim', labelEn: 'Autumn', symbol: '🍁', cornerText: 'R', cornerTextEn: 'S' },
+  { kindId: 'season-4', matchGroup: 'group-season', suit: 'seasons', rank: 4, labelCs: 'Zima', labelEn: 'Winter', symbol: '❄️', cornerText: 'R', cornerTextEn: 'S' },
 ];
 
 export interface SlotCoord {

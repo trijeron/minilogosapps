@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Check, Edit3, Lightbulb, RotateCcw, ShieldCheck } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface RulesModalProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface RulesModalProps {
 }
 
 export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
+  const { isEn, pick } = useLanguage();
   if (!isOpen) return null;
 
   return (
@@ -16,10 +18,10 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-base sm:text-lg font-bold text-slate-900">
-              Pravidla Mini Sudoku 6×6
+              {pick('Pravidla Mini Sudoku 6×6', 'Mini Sudoku 6×6 Rules')}
             </h3>
             <p className="text-xs text-slate-500">
-              Rychlý průvodce a nápověda ke hře
+              {pick('Rychlý průvodce a nápověda ke hře', 'Quick guide and gameplay tips')}
             </p>
           </div>
           <button
@@ -39,9 +41,17 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                Cíl hry
+                {pick('Cíl hry', 'Goal')}
               </strong>
-              Doplňte do mřížky 6×6 čísla <strong>1 až 6</strong> tak, aby se žádné číslo neopakovalo v žádném řádku, sloupci ani vyznačeném bloku.
+              {isEn ? (
+                <>
+                  Fill the 6×6 grid with digits <strong>1 to 6</strong> so that no digit repeats in any row, column, or bold-bordered box.
+                </>
+              ) : (
+                <>
+                  Doplňte do mřížky 6×6 čísla <strong>1 až 6</strong> tak, aby se žádné číslo neopakovalo v žádném řádku, sloupci ani vyznačeném bloku.
+                </>
+              )}
             </div>
           </div>
 
@@ -52,9 +62,17 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                Bloky 2×3
+                {pick('Bloky 2×3', '2×3 Boxes')}
               </strong>
-              Hrací plocha je rozdělena na 6 obdélníkových bloků o velikosti <strong>2 řádky × 3 sloupce</strong> (ohraničené silnější černou linkou). Každý blok musí obsahovat čísla 1–6.
+              {isEn ? (
+                <>
+                  The board is divided into 6 rectangular boxes of <strong>2 rows × 3 columns</strong> (outlined in bold). Each box must contain digits 1–6.
+                </>
+              ) : (
+                <>
+                  Hrací plocha je rozdělena na 6 obdélníkových bloků o velikosti <strong>2 řádky × 3 sloupce</strong> (ohraničené silnější černou linkou). Každý blok musí obsahovat čísla 1–6.
+                </>
+              )}
             </div>
           </div>
 
@@ -65,9 +83,12 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                Kontrola správnosti v reálném čase
+                {pick('Kontrola správnosti v reálném čase', 'Real-time error check')}
               </strong>
-              Aplikace ihned červeně označí konflikty (duplikáty v řádku, sloupci či bloku). Kontrolu můžete kdykoliv zapnout nebo vypnout v záhlaví.
+              {pick(
+                'Aplikace ihned červeně označí konflikty (duplikáty v řádku, sloupci či bloku). Kontrolu můžete kdykoliv zapnout nebo vypnout v záhlaví.',
+                'Conflicts (duplicates in a row, column, or box) are highlighted in red. You can toggle live checking anytime in the header.'
+              )}
             </div>
           </div>
 
@@ -78,9 +99,17 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                Poznámky (tužka)
+                {pick('Poznámky (tužka)', 'Notes (pencil marks)')}
               </strong>
-              Aktivujte tlačítko <em>Poznámky</em> a zapisujte si do prázdných buněk kandidátní čísla. Čísla se zobrazují v miniaturní mřížce.
+              {isEn ? (
+                <>
+                  Enable the <em>Notes</em> toggle to jot candidate digits inside empty cells in a miniature grid.
+                </>
+              ) : (
+                <>
+                  Aktivujte tlačítko <em>Poznámky</em> a zapisujte si do prázdných buněk kandidátní čísla. Čísla se zobrazují v miniaturní mřížce.
+                </>
+              )}
             </div>
           </div>
 
@@ -91,9 +120,12 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                3 Nápovědy na hru
+                {pick('3 Nápovědy na hru', '3 Hints per game')}
               </strong>
-              K dispozici máte přesně 3 nápovědy. Po kliknutí se do označené (nebo náhodné prázdné) buňky doplní správné číslo.
+              {pick(
+                'K dispozici máte přesně 3 nápovědy. Po kliknutí se do označené (nebo náhodné prázdné) buňky doplní správné číslo.',
+                'You get 3 hints per game. Clicking Hint fills in the correct digit for the selected cell (or an empty cell).'
+              )}
             </div>
           </div>
 
@@ -104,12 +136,19 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                Reset hřiště zachovává nápovědy
+                {pick('Reset hřiště zachovává nápovědy', 'Reset preserves hints')}
               </strong>
-              Tlačítko <em>Reset</em> vymaže všechny vámi zadané tahy a vrátí hřiště do původního stavu. Použité nápovědy však zůstávají vyplněné a počet nápověd se neobnovuje.
+              {isEn ? (
+                <>
+                  The <em>Reset</em> button clears all your entered digits and restores the starting board. Used hints stay filled and your hint count is not reset.
+                </>
+              ) : (
+                <>
+                  Tlačítko <em>Reset</em> vymaže všechny vámi zadané tahy a vrátí hřiště do původního stavu. Použité nápovědy však zůstávají vyplněné a počet nápověd se neobnovuje.
+                </>
+              )}
             </div>
           </div>
-
         </div>
 
         {/* Bottom Close */}
@@ -118,7 +157,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
           className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
         >
           <Check className="w-4 h-4" />
-          <span>Rozumím, jdeme hrát</span>
+          <span>{pick('Rozumím, jdeme hrát', 'Got it, let’s play')}</span>
         </button>
       </div>
     </div>

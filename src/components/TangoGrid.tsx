@@ -7,6 +7,7 @@ import {
   getVerticalEdgeIndex,
   TangoConflicts,
 } from '../utils/tangoEngine';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface TangoGridProps {
   board: TangoSymbol[];
@@ -37,6 +38,7 @@ export const TangoGrid: React.FC<TangoGridProps> = ({
   isPaused,
   onResume,
 }) => {
+  const { pick } = useLanguage();
   const selectedRow = selectedCell !== null ? Math.floor(selectedCell / TANGO_SIZE) : null;
   const selectedCol = selectedCell !== null ? selectedCell % TANGO_SIZE : null;
   const selectedValue = selectedCell !== null ? board[selectedCell] : 0;
@@ -127,9 +129,10 @@ export const TangoGrid: React.FC<TangoGridProps> = ({
                     }
                   }}
                   className="w-full h-full flex items-center justify-center p-1 cursor-pointer transition-transform active:scale-95"
-                  title={`Řádek ${row + 1}, Sloupec ${col + 1} ${
-                    isGiven ? '(Pevné)' : isHint ? '(Nápověda)' : ''
-                  }`}
+                  title={pick(
+                    `Řádek ${row + 1}, Sloupec ${col + 1} ${isGiven ? '(Pevné)' : isHint ? '(Nápověda)' : ''}`,
+                    `Row ${row + 1}, Column ${col + 1} ${isGiven ? '(Given)' : isHint ? '(Hint)' : ''}`
+                  )}
                 >
                   {value === 1 && (
                     <div
@@ -211,15 +214,20 @@ export const TangoGrid: React.FC<TangoGridProps> = ({
             <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
               <Play className="w-6 h-6 fill-white ml-0.5" />
             </div>
-            <h3 className="text-base font-bold mb-1">Hra Tango je pozastavena</h3>
+            <h3 className="text-base font-bold mb-1">
+              {pick('Hra Tango je pozastavena', 'Tango game paused')}
+            </h3>
             <p className="text-xs text-slate-300 mb-4 max-w-[200px]">
-              Pole je skryté, aby se nezastavoval čas při prohlížení.
+              {pick(
+                'Pole je skryté, aby se nezastavoval čas při prohlížení.',
+                'The board is hidden while the timer is paused.'
+              )}
             </p>
             <button
               onClick={onResume}
               className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs tracking-wide shadow-md active:scale-95 transition-transform"
             >
-              Pokračovat ve hře
+              {pick('Pokračovat ve hře', 'Resume game')}
             </button>
           </div>
         )}
@@ -228,8 +236,13 @@ export const TangoGrid: React.FC<TangoGridProps> = ({
       {/* Row and Column Balance Trackers */}
       <div className="w-full mt-2 flex items-center justify-between text-[10px] text-slate-500 px-1 font-medium">
         <div className="flex items-center gap-1">
-          <span className="font-semibold text-slate-700">Pravidlo:</span>
-          <span>Každý řádek i sloupec = přesně 3 ☀️ a 3 🌙 (max 2 stejné vedle sebe)</span>
+          <span className="font-semibold text-slate-700">{pick('Pravidlo:', 'Rule:')}</span>
+          <span>
+            {pick(
+              'Každý řádek i sloupec = přesně 3 ☀️ a 3 🌙 (max 2 stejné vedle sebe)',
+              'Every row & column = exactly 3 ☀️ and 3 🌙 (max 2 identical in a row)'
+            )}
+          </span>
         </div>
       </div>
     </div>

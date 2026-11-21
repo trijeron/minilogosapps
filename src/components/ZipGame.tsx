@@ -7,6 +7,7 @@ import {
   applyZipCellInteraction,
   isZipCompleted,
   getZipHint,
+  formatZipReason,
 } from '../utils/zipEngine';
 import { GameInfoBar } from './GameInfoBar';
 import { ZipGrid } from './ZipGrid';
@@ -22,6 +23,7 @@ import {
   saveZipBestTime,
 } from '../utils/storage';
 import { GameTab } from './Header';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface ZipGameProps {
   realTimeCheck: boolean;
@@ -36,6 +38,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
   onSelectGame,
   externalPaused = false,
 }) => {
+  const { lang, pick } = useLanguage();
   const [boardSize, setBoardSize] = useState<ZipBoardSize>(6);
   const [mode, setMode] = useState<ZipMode>('classic');
   const [numbers, setNumbers] = useState<number[]>([]);
@@ -322,8 +325,9 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           sound.playNote();
         }
         commitPathUpdate(res.path, false);
-      } else if (res.action === 'blocked' && res.reason && realTimeCheck) {
-        showTransientFeedback(res.reason, idx);
+      } else if (res.action === 'blocked' && (res.reasonCode || res.reason) && realTimeCheck) {
+        const msg = formatZipReason(res.reasonCode, res.expectedNum, lang, res.reason);
+        if (msg) showTransientFeedback(msg, idx);
       }
     },
     [
@@ -337,6 +341,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       commitPathUpdate,
       realTimeCheck,
       showTransientFeedback,
+      lang,
     ]
   );
 
@@ -360,8 +365,9 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           sound.playNote();
         }
         commitPathUpdate(res.path, false);
-      } else if (res.action === 'blocked' && res.reason && realTimeCheck) {
-        showTransientFeedback(res.reason, idx);
+      } else if (res.action === 'blocked' && (res.reasonCode || res.reason) && realTimeCheck) {
+        const msg = formatZipReason(res.reasonCode, res.expectedNum, lang, res.reason);
+        if (msg) showTransientFeedback(msg, idx);
       }
     },
     [
@@ -375,6 +381,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       commitPathUpdate,
       realTimeCheck,
       showTransientFeedback,
+      lang,
     ]
   );
 
@@ -413,9 +420,9 @@ export const ZipGame: React.FC<ZipGameProps> = ({
     setPath([startCell]);
     setHintTargetCell(null);
     setHintBacktrackCell(null);
-    setStatusNote('Cesta resetována na číslo 1.');
+    setStatusNote(pick('Cesta resetována na číslo 1.', 'Path reset back to 1.'));
     sound.playErase();
-  }, [isPaused, isCompleted, path, solutionPath]);
+  }, [isPaused, isCompleted, path, solutionPath, pick]);
 
   const handleUseHint = useCallback(() => {
     if (isPaused || isCompleted) return;
@@ -435,14 +442,22 @@ export const ZipGame: React.FC<ZipGameProps> = ({
     if (hint.type === 'next') {
       setHintTargetCell(hint.targetCell);
       setHintBacktrackCell(null);
-      setStatusNote('Další správný krok je zvýrazněn oranžově.');
+      setStatusNote(
+        pick('Další správný krok je zvýrazněn oranžově.', 'The next valid step is highlighted in orange.')
+      );
     } else {
       setHintTargetCell(null);
       setHintBacktrackCell(hint.backtrackCell);
       setStatusNote(
         mode === 'simple'
-          ? 'Cesta k dalšímu číslu je zablokovaná — vraťte se na červeně označené políčko.'
-          : 'Odbočili jste ze správného řešení — vraťte se na červeně označené políčko.'
+          ? pick(
+              'Cesta k dalšímu číslu je zablokovaná — vraťte se na červeně označené políčko.',
+              'Path to the next number is blocked — backtrack to the red-highlighted cell.'
+            )
+          : pick(
+              'Odbočili jste ze správného řešení — vraťte se na červeně označené políčko.',
+              'You went off the solution path — backtrack to the red-highlighted cell.'
+            )
       );
     }
   }, [
@@ -456,6 +471,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
     maxNumber,
     horizontalWalls,
     verticalWalls,
+    pick,
   ]);
 
   const handleSizeClick = (sz: ZipBoardSize) => {
@@ -501,9 +517,14 @@ export const ZipGame: React.FC<ZipGameProps> = ({
 
   const canUndo = history.length > 0 || path.length > 1;
   const activeAlert = reachedLastEarly
-    ? `Poslední číslo ${maxNumber} musí být až na konci cesty — zbývá projít ${
-        totalCells - path.length
-      } políček.`
+    ? pick(
+        `Poslední číslo ${maxNumber} musí být až na konci cesty — zbývá projít ${
+          totalCells - path.length
+        } políček.`,
+        `Final number ${maxNumber} must be at the very end — ${
+          totalCells - path.length
+        } cells still unvisited.`
+      )
     : statusNote;
 
   return (
@@ -533,7 +554,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           onClick={() => setShowRules(true)}
           className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs whitespace-nowrap shrink-0"
         >
-          Pravidla
+          {pick('Pravidla', 'Rules')}
         </button>
 
         <button
@@ -548,12 +569,16 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           }}
           className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs active:scale-95 whitespace-nowrap shrink-0"
         >
-          Nová hra
+          {pick('Nová hra', 'New game')}
         </button>
       </div>
 
       {/* Mode Toggle: Classic (walls + all cells) vs Simple (connect numbers freely without walls) */}
-      <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl gap-1" role="group" aria-label="Režim hry Zip">
+      <div
+        className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl gap-1"
+        role="group"
+        aria-label={pick('Režim hry Zip', 'Zip game mode')}
+      >
         <button
           type="button"
           onClick={() => handleModeClick('classic')}
@@ -563,7 +588,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Klasický (se zdmi)
+          {pick('Klasický (se zdmi)', 'Classic (with walls)')}
         </button>
         <button
           type="button"
@@ -574,7 +599,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Jednoduché spojování
+          {pick('Jednoduché spojování', 'Simple connect')}
         </button>
       </div>
 
@@ -594,11 +619,11 @@ export const ZipGame: React.FC<ZipGameProps> = ({
         <div className="flex items-center gap-2 tabular-nums">
           {mode === 'classic' ? (
             <span>
-              Políčka: <strong className="text-slate-900">{path.length}</strong>/{totalCells}
+              {pick('Políčka:', 'Cells:')} <strong className="text-slate-900">{path.length}</strong>/{totalCells}
             </span>
           ) : (
             <span>
-              Spojeno:{' '}
+              {pick('Spojeno:', 'Linked:')}{' '}
               <strong className="text-slate-900">
                 {Math.min(maxNumber, nextExpectedNumber - 1)}
               </strong>
@@ -607,14 +632,16 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           )}
           <span aria-hidden="true">·</span>
           <span>
-            Další číslo:{' '}
+            {pick('Další číslo:', 'Next number:')}{' '}
             <strong className="text-orange-700">
-              {nextExpectedNumber <= maxNumber ? nextExpectedNumber : 'Hotovo'}
+              {nextExpectedNumber <= maxNumber ? nextExpectedNumber : pick('Hotovo', 'Done')}
             </strong>
           </span>
         </div>
         {hintsUsed > 0 && (
-          <span className="text-[11px] text-slate-500 tabular-nums">Nápovědy: {hintsUsed}</span>
+          <span className="text-[11px] text-slate-500 tabular-nums">
+            {pick(`Nápovědy: ${hintsUsed}`, `Hints: ${hintsUsed}`)}
+          </span>
         )}
       </div>
 
@@ -664,7 +691,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           className="py-2.5 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-45 disabled:pointer-events-none text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 transition-all"
         >
           <Undo2 className="w-4 h-4" />
-          <span>Zpět</span>
+          <span>{pick('Zpět', 'Undo')}</span>
         </button>
 
         <button
@@ -684,7 +711,7 @@ export const ZipGame: React.FC<ZipGameProps> = ({
           className="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 disabled:opacity-45 disabled:pointer-events-none text-amber-900 text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 transition-all"
         >
           <Lightbulb className="w-4 h-4 text-amber-600" />
-          <span>Nápověda</span>
+          <span>{pick('Nápověda', 'Hint')}</span>
         </button>
       </div>
 
@@ -706,17 +733,27 @@ export const ZipGame: React.FC<ZipGameProps> = ({
       {/* New Game Confirm Modal */}
       <ConfirmModal
         isOpen={showNewGameConfirm}
-        title="Spustit novou hru Zip?"
+        title={pick('Spustit novou hru Zip?', 'Start a new Zip game?')}
         description={
           (pendingMode || mode) === 'simple'
-            ? `Vygeneruje se nová mřížka ${pendingSize || boardSize}×${
-                pendingSize || boardSize
-              } pro jednoduché spojování bez zdí.`
-            : `Vygeneruje se nová mřížka ${pendingSize || boardSize}×${
-                pendingSize || boardSize
-              } s unikátním řešením.`
+            ? pick(
+                `Vygeneruje se nová mřížka ${pendingSize || boardSize}×${
+                  pendingSize || boardSize
+                } pro jednoduché spojování bez zdí.`,
+                `A fresh ${pendingSize || boardSize}×${
+                  pendingSize || boardSize
+                } board will be generated for simple connect mode without walls.`
+              )
+            : pick(
+                `Vygeneruje se nová mřížka ${pendingSize || boardSize}×${
+                  pendingSize || boardSize
+                } s unikátním řešením.`,
+                `A fresh ${pendingSize || boardSize}×${
+                  pendingSize || boardSize
+                } board with a unique solution will be generated.`
+              )
         }
-        confirmLabel="Nová hra"
+        confirmLabel={pick('Nová hra', 'New game')}
         confirmVariant="primary"
         onConfirm={() => {
           const target = pendingSize || boardSize;

@@ -25,6 +25,7 @@ import {
 } from '../utils/storage';
 import { getDifficultyLabel } from '../utils/format';
 import { GameTab } from './Header';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface SudokuGameProps {
   realTimeCheck: boolean;
@@ -42,6 +43,7 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
   onSelectGame,
   externalPaused = false,
 }) => {
+  const { lang, pick } = useLanguage();
   // Game Core State
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [puzzle, setPuzzle] = useState<number[]>([]);
@@ -542,7 +544,7 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {getDifficultyLabel(level)}
+                {getDifficultyLabel(level, lang)}
               </button>
             );
           })}
@@ -551,9 +553,9 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
         <button
           onClick={() => setShowRules(true)}
           className="ml-2 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 shadow-2xs"
-          title="Pravidla Minisudoku"
+          title={pick('Pravidla Minisudoku', 'Mini Sudoku Rules')}
         >
-          <span>Pravidla</span>
+          <span>{pick('Pravidla', 'Rules')}</span>
         </button>
 
         <button
@@ -563,7 +565,7 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
           }}
           className="ml-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs active:scale-95"
         >
-          Nová hra
+          {pick('Nová hra', 'New game')}
         </button>
       </div>
 
@@ -586,12 +588,18 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
           </div>
           <div className="flex-1 flex flex-col">
             <span className="text-xs font-bold leading-tight text-rose-800">
-              Varování: Zjištěn konflikt v Sudoku!
+              {pick('Varování: Zjištěn konflikt v Sudoku!', 'Warning: Sudoku conflict detected!')}
             </span>
             <span className="text-[11px] text-rose-700 font-medium leading-tight mt-0.5">
               {delayedConflicts.size > 0
-                ? 'Stejné číslo se opakuje v témže řádku, sloupci nebo bloku 2×3.'
-                : 'Některé zadané číslo neodpovídá správnému řešení.'}
+                ? pick(
+                    'Stejné číslo se opakuje v témže řádku, sloupci nebo bloku 2×3.',
+                    'The same digit is repeated in the same row, column, or 2×3 box.'
+                  )
+                : pick(
+                    'Některé zadané číslo neodpovídá správnému řešení.',
+                    'One of the entered digits does not match the correct solution.'
+                  )}
             </span>
           </div>
         </div>
@@ -649,9 +657,12 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
       {/* Reset Board Confirmation Modal */}
       <ConfirmModal
         isOpen={showResetConfirm}
-        title="Resetovat hřiště do původního stavu?"
-        description="Všechna vaše zadaná čísla budou vymazána. Dle pravidel zůstávají použité nápovědy zachovány a jejich zbývající počet se neobnovuje."
-        confirmLabel="Resetovat hřiště"
+        title={pick('Resetovat hřiště do původního stavu?', 'Reset board to initial state?')}
+        description={pick(
+          'Všechna vaše zadaná čísla budou vymazána. Dle pravidel zůstávají použité nápovědy zachovány a jejich zbývající počet se neobnovuje.',
+          'All your entered digits will be cleared. Used hints remain filled and your remaining hint count is not restored.'
+        )}
+        confirmLabel={pick('Resetovat hřiště', 'Reset board')}
         confirmVariant="danger"
         onConfirm={handleResetBoard}
         onCancel={() => setShowResetConfirm(false)}
@@ -660,9 +671,12 @@ export const SudokuGame: React.FC<SudokuGameProps> = ({
       {/* New Game Confirmation Modal */}
       <ConfirmModal
         isOpen={showNewGameConfirm}
-        title="Spustit novou hru?"
-        description="Aktuální rozpracovaná hra bude ukončena a vygeneruje se nová hrací plocha s obnovenými 3 nápovědami."
-        confirmLabel="Spustit novou hru"
+        title={pick('Spustit novou hru?', 'Start a new game?')}
+        description={pick(
+          'Aktuální rozpracovaná hra bude ukončena a vygeneruje se nová hrací plocha s obnovenými 3 nápovědami.',
+          'Your current game in progress will end and a fresh puzzle will be generated with 3 hints.'
+        )}
+        confirmLabel={pick('Spustit novou hru', 'Start new game')}
         confirmVariant="primary"
         onConfirm={() => {
           setShowNewGameConfirm(false);

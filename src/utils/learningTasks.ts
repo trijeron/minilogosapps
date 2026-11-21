@@ -6,6 +6,7 @@ import {
   LearningTaskHistoryEntry,
   MatchLearningTask,
 } from '../types/learningGate';
+import { Language } from '../i18n/LanguageContext';
 
 export const DEFAULT_ENGLISH_TASKS: LearningTask[] = [
   {
@@ -100,6 +101,56 @@ export const DEFAULT_ENGLISH_TASKS: LearningTask[] = [
 
 export const DEFAULT_ENGLISH_TASKS_JSON = JSON.stringify(DEFAULT_ENGLISH_TASKS, null, 2);
 
+export const DEFAULT_EN_QUIZ_TASKS: LearningTask[] = [
+  {
+    type: 'match',
+    prompt: 'Match each animal with its habitat',
+    pairs: [
+      { left: 'Camel', right: 'Desert' },
+      { left: 'Penguin', right: 'Antarctica' },
+      { left: 'Dolphin', right: 'Ocean' },
+      { left: 'Squirrel', right: 'Forest' },
+    ],
+  },
+  {
+    type: 'fill',
+    prompt: 'Complete the math equation: 7 × 8 = ____',
+    answer: '56',
+    hint: 'Between 50 and 60',
+  },
+  {
+    type: 'choice',
+    prompt: 'Which planet is known as the Red Planet?',
+    options: ['Venus', 'Mars', 'Jupiter', 'Saturn'],
+    correctIndex: 1,
+  },
+  {
+    type: 'match',
+    prompt: 'Match each country with its capital city',
+    pairs: [
+      { left: 'France', right: 'Paris' },
+      { left: 'Japan', right: 'Tokyo' },
+      { left: 'Czechia', right: 'Prague' },
+      { left: 'Italy', right: 'Rome' },
+    ],
+  },
+  {
+    type: 'fill',
+    prompt: 'Fill in the missing word: The opposite of "cold" is ____.',
+    answer: 'hot',
+    answers: ['hot', 'warm'],
+    hint: '3 letters, starts with H',
+  },
+  {
+    type: 'choice',
+    prompt: 'How many sides does a hexagon have?',
+    options: ['5', '6', '7', '8'],
+    correctIndex: 1,
+  },
+];
+
+export const DEFAULT_EN_QUIZ_TASKS_JSON = JSON.stringify(DEFAULT_EN_QUIZ_TASKS, null, 2);
+
 export const DEFAULT_LEARNING_GATE_SETTINGS: LearningGateSettings = {
   enabled: true,
   triggerByGames: true,
@@ -117,13 +168,17 @@ export interface ParseTasksResult {
   error?: string;
 }
 
-export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
+export function parseLearningTasksJson(
+  rawJson: string,
+  lang: Language = 'cs'
+): ParseTasksResult {
+  const isEn = lang === 'en';
   const trimmed = rawJson.trim();
   if (!trimmed) {
     return {
       ok: false,
       tasks: [],
-      error: 'JSON zadání nesmí být prázdné.',
+      error: isEn ? 'JSON task definition cannot be empty.' : 'JSON zadání nesmí být prázdné.',
     };
   }
 
@@ -134,7 +189,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
     return {
       ok: false,
       tasks: [],
-      error: `Neplatný JSON formát: ${err instanceof Error ? err.message : 'chyba syntaxe'}`,
+      error: isEn
+        ? `Invalid JSON format: ${err instanceof Error ? err.message : 'syntax error'}`
+        : `Neplatný JSON formát: ${err instanceof Error ? err.message : 'chyba syntaxe'}`,
     };
   }
 
@@ -151,7 +208,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
     return {
       ok: false,
       tasks: [],
-      error: 'Kořenový JSON musí být pole úkolů [...] nebo objekt { "tasks": [...] }.',
+      error: isEn
+        ? 'Root JSON must be a task array [...] or an object { "tasks": [...] }.'
+        : 'Kořenový JSON musí být pole úkolů [...] nebo objekt { "tasks": [...] }.',
     };
   }
 
@@ -160,23 +219,35 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
     return {
       ok: false,
       tasks: [],
-      error: 'Seznam úkolů musí obsahovat alespoň 1 úkol.',
+      error: isEn
+        ? 'Task list must contain at least 1 task.'
+        : 'Seznam úkolů musí obsahovat alespoň 1 úkol.',
     };
   }
 
   const tasks: LearningTask[] = [];
   for (let i = 0; i < list.length; i++) {
     const item = list[i];
-    const label = `Úkol #${i + 1}`;
+    const label = isEn ? `Task #${i + 1}` : `Úkol #${i + 1}`;
     if (!item || typeof item !== 'object') {
-      return { ok: false, tasks: [], error: `${label}: musí být objekt.` };
+      return {
+        ok: false,
+        tasks: [],
+        error: isEn ? `${label}: must be an object.` : `${label}: musí být objekt.`,
+      };
     }
     const obj = item as Record<string, unknown>;
     const type = obj.type;
     const prompt = typeof obj.prompt === 'string' ? obj.prompt.trim() : '';
 
     if (!prompt) {
-      return { ok: false, tasks: [], error: `${label}: chybí text zadání ("prompt").` };
+      return {
+        ok: false,
+        tasks: [],
+        error: isEn
+          ? `${label}: missing prompt text ("prompt").`
+          : `${label}: chybí text zadání ("prompt").`,
+      };
     }
 
     if (type === 'match') {
@@ -184,7 +255,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
         return {
           ok: false,
           tasks: [],
-          error: `${label} (match): pole "pairs" musí obsahovat alespoň 2 dvojice { "left", "right" }.`,
+          error: isEn
+            ? `${label} (match): "pairs" array must have at least 2 { "left", "right" } pairs.`
+            : `${label} (match): pole "pairs" musí obsahovat alespoň 2 dvojice { "left", "right" }.`,
         };
       }
       const pairs: { left: string; right: string }[] = [];
@@ -196,7 +269,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
           return {
             ok: false,
             tasks: [],
-            error: `${label} (match): dvojice #${p + 1} musí mít neprázdné "left" i "right".`,
+            error: isEn
+              ? `${label} (match): pair #${p + 1} must have non-empty "left" and "right".`
+              : `${label} (match): dvojice #${p + 1} musí mít neprázdné "left" i "right".`,
           };
         }
         pairs.push({ left, right });
@@ -213,7 +288,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
         return {
           ok: false,
           tasks: [],
-          error: `${label} (fill): chybí správná odpověď ("answer").`,
+          error: isEn
+            ? `${label} (fill): missing correct answer ("answer").`
+            : `${label} (fill): chybí správná odpověď ("answer").`,
         };
       }
       const task: FillLearningTask = {
@@ -229,7 +306,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
         return {
           ok: false,
           tasks: [],
-          error: `${label} (choice): "options" musí obsahovat alespoň 2 možnosti.`,
+          error: isEn
+            ? `${label} (choice): "options" must contain at least 2 choices.`
+            : `${label} (choice): "options" musí obsahovat alespoň 2 možnosti.`,
         };
       }
       const options = obj.options.map((o) => (typeof o === 'string' ? o.trim() : ''));
@@ -237,7 +316,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
         return {
           ok: false,
           tasks: [],
-          error: `${label} (choice): všechny položky v "options" musí být neprázdný text.`,
+          error: isEn
+            ? `${label} (choice): all items in "options" must be non-empty strings.`
+            : `${label} (choice): všechny položky v "options" musí být neprázdný text.`,
         };
       }
       let correctIndex = -1;
@@ -251,7 +332,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
         return {
           ok: false,
           tasks: [],
-          error: `${label} (choice): zadejte platné "correctIndex" (0 až ${options.length - 1}) nebo "answer".`,
+          error: isEn
+            ? `${label} (choice): specify a valid "correctIndex" (0 to ${options.length - 1}) or "answer".`
+            : `${label} (choice): zadejte platné "correctIndex" (0 až ${options.length - 1}) nebo "answer".`,
         };
       }
       const task: ChoiceLearningTask = {
@@ -265,7 +348,9 @@ export function parseLearningTasksJson(rawJson: string): ParseTasksResult {
       return {
         ok: false,
         tasks: [],
-        error: `${label}: neznámý typ "${String(type)}". Povolené typy jsou "match", "fill", "choice".`,
+        error: isEn
+          ? `${label}: unknown type "${String(type)}". Allowed types are "match", "fill", "choice".`
+          : `${label}: neznámý typ "${String(type)}". Povolené typy jsou "match", "fill", "choice".`,
       };
     }
   }
@@ -390,7 +475,7 @@ export function isFillAnswerCorrect(task: FillLearningTask, userInput: string): 
   return accepted.some((ans) => normalizeAnswerText(ans) === norm);
 }
 
-export function summarizeTaskTypes(tasks: LearningTask[]): string {
+export function summarizeTaskTypes(tasks: LearningTask[], lang: Language = 'cs'): string {
   const counts: Record<'match' | 'fill' | 'choice', number> = {
     match: 0,
     fill: 0,
@@ -399,29 +484,32 @@ export function summarizeTaskTypes(tasks: LearningTask[]): string {
   for (const t of tasks) {
     counts[t.type]++;
   }
+  const isEn = lang === 'en';
   const parts: string[] = [];
-  if (counts.match > 0) parts.push(`spojování (${counts.match})`);
-  if (counts.fill > 0) parts.push(`doplnění (${counts.fill})`);
-  if (counts.choice > 0) parts.push(`výběr (${counts.choice})`);
-  return parts.join(' · ') || `${tasks.length} úkolů`;
+  if (counts.match > 0) parts.push(`${isEn ? 'match' : 'spojování'} (${counts.match})`);
+  if (counts.fill > 0) parts.push(`${isEn ? 'fill' : 'doplnění'} (${counts.fill})`);
+  if (counts.choice > 0) parts.push(`${isEn ? 'choice' : 'výběr'} (${counts.choice})`);
+  return parts.join(' · ') || (isEn ? `${tasks.length} tasks` : `${tasks.length} úkolů`);
 }
 
 export function buildTaskHistoryEntry(
   rawJson: string,
-  customName?: string
+  customName?: string,
+  lang: Language = 'cs'
 ): LearningTaskHistoryEntry | null {
-  const parsed = parseLearningTasksJson(rawJson);
+  const parsed = parseLearningTasksJson(rawJson, lang);
   if (!parsed.ok) return null;
 
   const trimmedName = (customName || '').trim();
   const formattedJson = rawJson.trim();
   const now = Date.now();
-  const timeLabel = new Date(now).toLocaleTimeString('cs-CZ', {
+  const timeLabel = new Date(now).toLocaleTimeString(lang === 'en' ? 'en-US' : 'cs-CZ', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
-  const firstPrompt = parsed.tasks[0]?.prompt?.trim() || 'Sada úkolů';
+  const firstPrompt =
+    parsed.tasks[0]?.prompt?.trim() || (lang === 'en' ? 'Task set' : 'Sada úkolů');
   const shortPrompt =
     firstPrompt.length > 34 ? `${firstPrompt.slice(0, 34)}…` : firstPrompt;
 
@@ -430,7 +518,7 @@ export function buildTaskHistoryEntry(
     name: trimmedName || `${shortPrompt} (${timeLabel})`,
     json: formattedJson,
     taskCount: parsed.tasks.length,
-    typesSummary: summarizeTaskTypes(parsed.tasks),
+    typesSummary: summarizeTaskTypes(parsed.tasks, lang),
     savedAt: now,
   };
 }
@@ -507,16 +595,23 @@ export function extractSetNameFromJsonOrSource(
 }
 
 export function validateTaskSourceUrl(
-  input: string
+  input: string,
+  lang: Language = 'cs'
 ): { ok: true; url: string } | { ok: false; error: string } {
+  const isEn = lang === 'en';
   const trimmed = input.trim();
   if (!trimmed) {
-    return { ok: false, error: 'Zadejte adresu (URL) JSON souboru.' };
+    return {
+      ok: false,
+      error: isEn ? 'Enter the URL of a JSON file.' : 'Zadejte adresu (URL) JSON souboru.',
+    };
   }
   if (/^(javascript|data|vbscript|file):/i.test(trimmed)) {
     return {
       ok: false,
-      error: 'Nepodporovaný protokol. Použijte https://, http:// nebo relativní cestu (např. ./ukoly.json).',
+      error: isEn
+        ? 'Unsupported protocol. Use https://, http://, or a relative path (e.g. ./tasks.json).'
+        : 'Nepodporovaný protokol. Použijte https://, http:// nebo relativní cestu (např. ./ukoly.json).',
     };
   }
   if (
@@ -551,19 +646,21 @@ export function resolveRelativeUrl(targetUrl: string, baseUrl?: string): string 
 
 export function parseRemoteTasksOrCatalog(
   rawJson: string,
-  sourceUrl?: string
+  sourceUrl?: string,
+  lang: Language = 'cs'
 ): RemoteTasksParseResult {
+  const isEn = lang === 'en';
   const trimmed = rawJson.trim();
   if (!trimmed) {
-    return { kind: 'error', error: 'Načtený soubor je prázdný.' };
+    return { kind: 'error', error: isEn ? 'Loaded file is empty.' : 'Načtený soubor je prázdný.' };
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Neplatná syntaxe JSON';
-    return { kind: 'error', error: `Neplatný JSON: ${msg}` };
+    const msg = err instanceof Error ? err.message : isEn ? 'Invalid JSON syntax' : 'Neplatná syntaxe JSON';
+    return { kind: 'error', error: isEn ? `Invalid JSON: ${msg}` : `Neplatný JSON: ${msg}` };
   }
 
   // Catalog format: { "sets": [ { "name": "...", "url": "..." } | { "name": "...", "tasks": [...] } ] }
@@ -580,15 +677,16 @@ export function parseRemoteTasksOrCatalog(
       const entry = rawSets[i];
       if (!entry || typeof entry !== 'object') continue;
       const obj = entry as Record<string, unknown>;
+      const fallbackSetName = isEn ? `Set #${i + 1}` : `Sada #${i + 1}`;
       const name =
         typeof obj.name === 'string' && obj.name.trim().length > 0
           ? obj.name.trim()
           : typeof obj.url === 'string'
-            ? extractSetNameFromFilename(obj.url) || `Sada #${i + 1}`
-            : `Sada #${i + 1}`;
+            ? extractSetNameFromFilename(obj.url) || fallbackSetName
+            : fallbackSetName;
 
       if (typeof obj.url === 'string' && obj.url.trim().length > 0) {
-        const checked = validateTaskSourceUrl(obj.url);
+        const checked = validateTaskSourceUrl(obj.url, lang);
         if (checked.ok) {
           items.push({
             name,
@@ -597,7 +695,7 @@ export function parseRemoteTasksOrCatalog(
         }
       } else if (Array.isArray(obj.tasks)) {
         const inlineJson = JSON.stringify(obj.tasks, null, 2);
-        const res = parseLearningTasksJson(inlineJson);
+        const res = parseLearningTasksJson(inlineJson, lang);
         if (res.ok) {
           items.push({
             name,
@@ -611,7 +709,9 @@ export function parseRemoteTasksOrCatalog(
     if (items.length === 0) {
       return {
         kind: 'error',
-        error: 'Katalog "sets" neobsahuje žádné platné sady úkolů.',
+        error: isEn
+          ? 'Catalog "sets" contains no valid task sets.'
+          : 'Katalog "sets" neobsahuje žádné platné sady úkolů.',
       };
     }
 
@@ -619,9 +719,12 @@ export function parseRemoteTasksOrCatalog(
   }
 
   // Standard single task set: [...] or { "name"?: "...", "tasks": [...] }
-  const tasksRes = parseLearningTasksJson(trimmed);
+  const tasksRes = parseLearningTasksJson(trimmed, lang);
   if (!tasksRes.ok) {
-    return { kind: 'error', error: tasksRes.error || 'Neplatný formát úkolů.' };
+    return {
+      kind: 'error',
+      error: tasksRes.error || (isEn ? 'Invalid task format.' : 'Neplatný formát úkolů.'),
+    };
   }
 
   return {

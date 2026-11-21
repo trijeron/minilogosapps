@@ -2,6 +2,7 @@ import React from 'react';
 import { Crown, X, Lightbulb, Play } from 'lucide-react';
 import { QueensBoardSize, QueensCellState } from '../types/queens';
 import { REGION_COLORS, QueensConflicts } from '../utils/queensEngine';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface QueensGridProps {
   board: QueensCellState[];
@@ -30,6 +31,7 @@ export const QueensGrid: React.FC<QueensGridProps> = ({
   isPaused,
   onResume,
 }) => {
+  const { isEn, pick } = useLanguage();
   const gridColsClass =
     size === 6
       ? 'grid-cols-6 grid-rows-6'
@@ -91,7 +93,10 @@ export const QueensGrid: React.FC<QueensGridProps> = ({
                   onSelectCell(idx);
                   onCellClick(idx);
                 }}
-                aria-label={`Řádek ${row + 1}, sloupec ${col + 1}, oblast ${regColor.name}`}
+                aria-label={pick(
+                  `Řádek ${row + 1}, sloupec ${col + 1}, oblast ${regColor.name}`,
+                  `Row ${row + 1}, column ${col + 1}, region ${regColor.nameEn}`
+                )}
                 className={`relative flex items-center justify-center cursor-pointer transition-all active:scale-95 ${borderClasses} ${cellBg}`}
               >
                 {/* 1st click = Queen 👑 (Dáma / Koruna) */}
@@ -138,15 +143,20 @@ export const QueensGrid: React.FC<QueensGridProps> = ({
             <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
               <Play className="w-6 h-6 fill-white ml-0.5" />
             </div>
-            <h3 className="text-base font-bold mb-1">Hra Queens je pozastavena</h3>
+            <h3 className="text-base font-bold mb-1">
+              {pick('Hra Queens je pozastavena', 'Queens game paused')}
+            </h3>
             <p className="text-xs text-slate-300 mb-4 max-w-[200px]">
-              Pole je skryté, aby se nezastavoval čas při prohlížení.
+              {pick(
+                'Pole je skryté, aby se nezastavoval čas při prohlížení.',
+                'The board is hidden while the timer is paused.'
+              )}
             </p>
             <button
               onClick={onResume}
               className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs tracking-wide shadow-md active:scale-95 transition-transform"
             >
-              Pokračovat ve hře
+              {pick('Pokračovat ve hře', 'Resume game')}
             </button>
           </div>
         )}
@@ -154,14 +164,17 @@ export const QueensGrid: React.FC<QueensGridProps> = ({
 
       {/* Legend of N regions */}
       <div className="w-full mt-2 flex items-center justify-between text-[11px] text-slate-500 px-1 font-medium">
-        <span className="font-semibold text-slate-700">{size} barevných oblastí:</span>
+        <span className="font-semibold text-slate-700">
+          {pick(`${size} barevných oblastí:`, `${size} color regions:`)}
+        </span>
         <div className="flex items-center gap-1">
           {Array.from({ length: size }, (_, i) => {
             const rc = REGION_COLORS[i % REGION_COLORS.length];
+            const regionLabel = isEn ? rc.nameEn : rc.name;
             return (
               <div
                 key={i}
-                title={`Oblast ${i + 1}: ${rc.name}`}
+                title={pick(`Oblast ${i + 1}: ${regionLabel}`, `Region ${i + 1}: ${regionLabel}`)}
                 className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full border border-slate-300 ${rc.bg}`}
               />
             );

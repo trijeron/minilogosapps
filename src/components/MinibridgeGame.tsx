@@ -23,8 +23,6 @@ import {
 } from '../types/minibridge';
 import {
   ALL_SUITS,
-  SEAT_LABELS,
-  SEAT_SHORT_LABELS,
   SUIT_INFO,
   SUIT_ORDER,
   calculateHandHcp,
@@ -38,6 +36,10 @@ import {
   getNextSeat,
   getPartnership,
   getRequiredTricks,
+  getSeatInitial,
+  getSeatLabel,
+  getSeatShortLabel,
+  getSuitLabel,
   getTrumpLabel,
   isLegalMove,
   recommendContract,
@@ -48,6 +50,7 @@ import { MinibridgeRulesModal } from './MinibridgeRulesModal';
 import { sound } from '../utils/audio';
 import { GameTab } from './Header';
 import { SwitchGameStrip } from './SwitchGameStrip';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface MinibridgeGameProps {
   realTimeCheck: boolean;
@@ -56,6 +59,7 @@ interface MinibridgeGameProps {
 }
 
 export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, onGameCompleted, onSelectGame }) => {
+  const { lang, isEn, pick } = useLanguage();
   const [dealer, setDealer] = useState<Seat>('north');
   const [hands, setHands] = useState<Record<Seat, Card[]>>(() =>
     dealHandsForPlayerDeclarer()
@@ -177,7 +181,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
     const rec = recommendContract(hands[dec], hands[dum], totalHcp);
     const aiContract = createAiContract(dec, hands[dec], hands[dum], totalHcp);
 
-    setAiContractReason(rec.reasonCs);
+    setAiContractReason(isEn ? rec.reasonEn : rec.reasonCs);
     const timer = window.setTimeout(() => {
       setContract(aiContract);
       setCurrentTurn(getNextSeat(dec));
@@ -186,7 +190,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
     }, 1400);
 
     return () => window.clearTimeout(timer);
-  }, [phase, declarerInfo, hands]);
+  }, [phase, declarerInfo, hands, isEn]);
 
   // Helper to show a brief warning on illegal click
   const triggerRuleWarning = useCallback((msg: string) => {
@@ -207,8 +211,12 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
       const seatHand = hands[seat];
       if (!isLegalMove(card, seatHand, currentTrick)) {
         const ledSuit = currentTrick[0].card.suit;
+        const suitText = `${SUIT_INFO[ledSuit].symbol} ${getSuitLabel(ledSuit, lang)}`;
         triggerRuleWarning(
-          `Musíš ctít vynesou barvu: ${SUIT_INFO[ledSuit].symbol} ${SUIT_INFO[ledSuit].labelCs}!`
+          pick(
+            `Musíš ctít vynesou barvu: ${suitText}!`,
+            `You must follow the led suit: ${suitText}!`
+          )
         );
         return;
       }
@@ -229,7 +237,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
         setCurrentTurn(getNextSeat(seat));
       }
     },
-    [phase, currentTurn, contract, hands, currentTrick, triggerRuleWarning]
+    [phase, currentTurn, contract, hands, currentTrick, triggerRuleWarning, lang, pick]
   );
 
   // Resolve completed 4-card trick after brief pause
@@ -341,57 +349,113 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
   const guideText = useMemo(() => {
     if (phase === 'ANNOUNCING_HCP') {
       if (announcedSeats.length < 4) {
-        return 'Hráči postupně počítají a hlásí body za silné karty (Eso = 4, Král = 3, Dáma = 2, Kluk = 1).';
+        return pick(
+          'Hráči postupně počítají a hlásí body za silné karty (Eso = 4, Král = 3, Dáma = 2, Kluk = 1).',
+          'Players count and announce their high card points (Ace = 4, King = 3, Queen = 2, Jack = 1).'
+        );
       }
       if (declarerInfo) {
-        const pairLabel = declarerInfo.partnership === 'NS' ? 'Sever + Jih (Vy)' : 'Východ + Západ';
-        return `${declarerInfo.isTie20 ? 'Remíza 20–20! ' : ''}Větší sílu má ${pairLabel}. Vydražitelem je ${SEAT_SHORT_LABELS[declarerInfo.declarer]} a ${SEAT_SHORT_LABELS[declarerInfo.dummy]} vykládá karty jako Tichý hráč.`;
+        const pairLabel =
+          declarerInfo.partnership === 'NS'
+            ? pick('Sever + Jih (Vy)', 'North + South (You)')
+            : pick('Východ + Západ', 'East + West');
+        const decName = getSeatShortLabel(declarerInfo.declarer, lang);
+        const dumName = getSeatShortLabel(declarerInfo.dummy, lang);
+        return pick(
+          `${declarerInfo.isTie20 ? 'Remíza 20–20! ' : ''}Větší sílu má ${pairLabel}. Vydražitelem je ${decName} a ${dumName} vykládá karty jako Tichý hráč.`,
+          `${declarerInfo.isTie20 ? '20–20 tie! ' : ''}${pairLabel} hold more points. ${decName} is Declarer and ${dumName} lays down cards as Dummy.`
+        );
       }
     }
     if (phase === 'CHOOSING_CONTRACT' && declarerInfo) {
       if (declarerInfo.declarer === 'south') {
-        return 'Prohlédni si své karty i vyložené karty partnera Severa. Vyber trumfovou barvu (ideálně 8+ karet dohromady) a závazek.';
+        return pick(
+          'Prohlédni si své karty i vyložené karty partnera Severa. Vyber trumfovou barvu (ideálně 8+ karet dohromady) a závazek.',
+          'Review your hand and North’s exposed Dummy cards. Pick a trump suit (ideally 8+ combined cards) and contract level.'
+        );
       }
-      return `${SEAT_SHORT_LABELS[declarerInfo.declarer]} si prohlíží karty Tichého hráče a vybírá trumfy a cíl zdvihů…`;
+      return pick(
+        `${getSeatShortLabel(declarerInfo.declarer, lang)} si prohlíží karty Tichého hráče a vybírá trumfy a cíl zdvihů…`,
+        `${getSeatShortLabel(declarerInfo.declarer, lang)} is reviewing Dummy’s hand and choosing trumps and contract…`
+      );
     }
     if (phase === 'PLAYING' && contract) {
       if (currentTurn === 'south' && contract.dummy !== 'south') {
         if (currentTrick.length === 0) {
-          return 'Jsi na výnosu! Klikni na kteroukoli svou kartu pro zahájení nového zdvihu.';
+          return pick(
+            'Jsi na výnosu! Klikni na kteroukoli svou kartu pro zahájení nového zdvihu.',
+            'Your lead! Tap any card in your hand to start a new trick.'
+          );
         }
-        const led = SUIT_INFO[currentTrick[0].card.suit];
-        const hasLed = hands.south.some((c) => c.suit === currentTrick[0].card.suit);
+        const ledSuit = currentTrick[0].card.suit;
+        const ledText = `${SUIT_INFO[ledSuit].symbol} ${getSuitLabel(ledSuit, lang)}`;
+        const hasLed = hands.south.some((c) => c.suit === ledSuit);
         return hasLed
-          ? `Na tahu jsi Ty (Jih). Musíš ctít vynesou barvu ${led.symbol} ${led.labelCs}.`
-          : `Na tahu jsi Ty (Jih). Nemáš ${led.symbol} ${led.labelCs} — můžeš přebít trumfem nebo zahodit jinou kartu.`;
+          ? pick(
+              `Na tahu jsi Ty (Jih). Musíš ctít vynesou barvu ${ledText}.`,
+              `Your turn (South). You must follow suit: ${ledText}.`
+            )
+          : pick(
+              `Na tahu jsi Ty (Jih). Nemáš ${ledText} — můžeš přebít trumfem nebo zahodit jinou kartu.`,
+              `Your turn (South). Void in ${ledText} — you may ruff with trump or discard.`
+            );
       }
       if (currentTurn === 'north' && contract.declarer === 'south') {
         if (currentTrick.length === 0) {
-          return 'Vynáší Tichý hráč (Sever) — klikni na zvýrazněnou kartu nahoře u partnera.';
+          return pick(
+            'Vynáší Tichý hráč (Sever) — klikni na zvýrazněnou kartu nahoře u partnera.',
+            'Dummy (North) leads — tap a highlighted card in North’s hand above.'
+          );
         }
-        const led = SUIT_INFO[currentTrick[0].card.suit];
-        const hasLed = hands.north.some((c) => c.suit === currentTrick[0].card.suit);
+        const ledSuit = currentTrick[0].card.suit;
+        const ledText = `${SUIT_INFO[ledSuit].symbol} ${getSuitLabel(ledSuit, lang)}`;
+        const hasLed = hands.north.some((c) => c.suit === ledSuit);
         return hasLed
-          ? `Na tahu je tvůj Dummy (Sever). Musíš za něj zahrát kartu v barvě ${led.symbol} ${led.labelCs}.`
-          : `Na tahu je tvůj Dummy (Sever). Nemá ${led.symbol} ${led.labelCs} — vyber mu trumf nebo odhoz.`;
+          ? pick(
+              `Na tahu je tvůj Dummy (Sever). Musíš za něj zahrát kartu v barvě ${ledText}.`,
+              `Dummy’s turn (North). Play a ${ledText} card from North’s hand.`
+            )
+          : pick(
+              `Na tahu je tvůj Dummy (Sever). Nemá ${ledText} — vyber mu trumf nebo odhoz.`,
+              `Dummy’s turn (North). Void in ${ledText} — choose a trump or discard.`
+            );
       }
       if (currentTurn === 'south' && contract.dummy === 'south') {
-        return 'Tvůj partner Sever je Vydražitel a vede teď i tvé karty Tichého hráče.';
+        return pick(
+          'Tvůj partner Sever je Vydražitel a vede teď i tvé karty Tichého hráče.',
+          'Your partner North is Declarer and is currently playing your Dummy hand.'
+        );
       }
-      return `Přemýšlí a hraje ${SEAT_SHORT_LABELS[currentTurn]}…`;
+      return pick(
+        `Přemýšlí a hraje ${getSeatShortLabel(currentTurn, lang)}…`,
+        `${getSeatShortLabel(currentTurn, lang)} is thinking and playing…`
+      );
     }
     if (phase === 'TRICK_RESOLVE' && lastTrickWinner) {
-      return `Zdvih získal ${SEAT_SHORT_LABELS[lastTrickWinner]}!`;
+      return pick(
+        `Zdvih získal ${getSeatShortLabel(lastTrickWinner, lang)}!`,
+        `${getSeatShortLabel(lastTrickWinner, lang)} wins the trick!`
+      );
     }
     if (phase === 'FINISHED' && contract) {
       const won = contract.partnership === 'NS' ? tricksWon.NS : tricksWon.EW;
       const made = won >= contract.targetTricks;
+      const pairName =
+        contract.partnership === 'NS'
+          ? pick('Sever + Jih', 'North + South')
+          : pick('Východ + Západ', 'East + West');
       return made
-        ? `Výborně! Hrající strana (${contract.partnership === 'NS' ? 'Sever + Jih' : 'Východ + Západ'}) splnila závazek (${won} z ${contract.targetTricks} zdvihů).`
-        : `Tentokrát to nevyšlo (${won} z ${contract.targetTricks} zdvihů). Zkus další rozdání!`;
+        ? pick(
+            `Výborně! Hrající strana (${pairName}) splnila závazek (${won} z ${contract.targetTricks} zdvihů).`,
+            `Well done! Declaring side (${pairName}) made the contract (${won} of ${contract.targetTricks} tricks).`
+          )
+        : pick(
+            `Tentokrát to nevyšlo (${won} z ${contract.targetTricks} zdvihů). Zkus další rozdání!`,
+            `Contract went down (${won} of ${contract.targetTricks} tricks). Try the next deal!`
+          );
     }
     return '';
-  }, [phase, announcedSeats, declarerInfo, contract, currentTurn, currentTrick, hands, lastTrickWinner, tricksWon]);
+  }, [phase, announcedSeats, declarerInfo, contract, currentTurn, currentTrick, hands, lastTrickWinner, tricksWon, lang, pick]);
 
   // Center trick card lookup by seat
   const trickCardBySeat = useMemo(() => {
@@ -412,7 +476,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
     if (cards.length === 0) {
       return (
         <div className="py-2 text-[11px] font-semibold text-emerald-100/60">
-          Všechny karty odehrány
+          {pick('Všechny karty odehrány', 'All cards played')}
         </div>
       );
     }
@@ -513,20 +577,20 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                 : 'bg-white/15 text-emerald-100'
             }`}
           >
-            {seat === 'west' ? 'Z' : 'V'}
+            {getSeatInitial(seat, lang)}
           </span>
           <div className="min-w-0">
             <div className="text-xs font-extrabold text-white flex items-center gap-1 whitespace-nowrap">
-              <span>{SEAT_SHORT_LABELS[seat]}</span>
+              <span>{getSeatShortLabel(seat, lang)}</span>
               {isActiveTurn && (
                 <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 text-[9px] font-black uppercase leading-none">
-                  Hraje
+                  {pick('Hraje', 'Turn')}
                 </span>
               )}
             </div>
             {(isDec || isDum) && (
               <div className="text-[10px] font-semibold text-amber-200">
-                {isDec ? 'Vydražitel' : 'Dummy'}
+                {isDec ? pick('Vydražitel', 'Declarer') : 'Dummy'}
               </div>
             )}
           </div>
@@ -535,11 +599,11 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
         <div className="flex items-center gap-1.5 text-[11px] font-bold tabular-nums shrink-0">
           {hasAnnounced && (
             <span className="px-1.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/40 text-amber-200">
-              {hcpBySeat[seat]} b.
+              {hcpBySeat[seat]} {pick('b.', 'pt')}
             </span>
           )}
           <span className="px-1.5 py-0.5 rounded-md bg-white/10 text-emerald-100">
-            {cardsCount} k.
+            {cardsCount} {pick('k.', 'c.')}
           </span>
         </div>
       </div>
@@ -565,24 +629,24 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
       <div className="w-full flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-slate-700 font-medium tabular-nums">
           <span>
-            Na tahu:{' '}
+            {pick('Na tahu:', 'Turn:')}{' '}
             <strong className="text-slate-900">
               {phase === 'ANNOUNCING_HCP'
-                ? 'Hlášení bodů'
+                ? pick('Hlášení bodů', 'Counting HCP')
                 : phase === 'CHOOSING_CONTRACT'
                   ? declarerSeat
-                    ? SEAT_SHORT_LABELS[declarerSeat]
+                    ? getSeatShortLabel(declarerSeat, lang)
                     : '—'
                   : phase === 'FINISHED'
-                    ? 'Konec hry'
-                    : SEAT_SHORT_LABELS[currentTurn]}
+                    ? pick('Konec hry', 'Deal over')
+                    : getSeatShortLabel(currentTurn, lang)}
             </strong>
           </span>
           <span aria-hidden="true" className="text-slate-300">
             ·
           </span>
           <span>
-            Trumf:{' '}
+            {pick('Trumf:', 'Trump:')}{' '}
             <strong
               className={
                 contract &&
@@ -592,7 +656,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
               }
             >
               {contract
-                ? `${getTrumpLabel(contract.trump)} (cíl ${contract.targetTricks})`
+                ? `${getTrumpLabel(contract.trump, lang)} (${pick('cíl', 'target')} ${contract.targetTricks})`
                 : '—'}
             </strong>
           </span>
@@ -600,7 +664,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
             ·
           </span>
           <span>
-            Zdvihy S+J / V+Z:{' '}
+            {pick('Zdvihy S+J / V+Z:', 'Tricks N+S / E+W:')}{' '}
             <strong className="text-slate-900">
               {tricksWon.NS} : {tricksWon.EW}
             </strong>
@@ -612,12 +676,15 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
           <div
             className="grid grid-cols-2 p-0.5 bg-slate-200/80 rounded-lg gap-0.5"
             role="group"
-            aria-label="Režim zobrazení stolu"
+            aria-label={pick('Režim zobrazení stolu', 'Table display mode')}
           >
             <button
               type="button"
               onClick={() => handleViewModeChange('fan')}
-              title="Kompaktní překrývající se vějíř karet – ideální pro mobil"
+              title={pick(
+                'Kompaktní překrývající se vějíř karet – ideální pro mobil',
+                'Compact overlapping card fan — great for mobile'
+              )}
               className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all whitespace-nowrap ${
                 viewMode === 'fan'
                   ? 'bg-white text-slate-900 shadow-xs'
@@ -625,12 +692,15 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
               }`}
             >
               <Layers className="w-3 h-3" />
-              <span>Vějíř</span>
+              <span>{pick('Vějíř', 'Fan')}</span>
             </button>
             <button
               type="button"
               onClick={() => handleViewModeChange('suits')}
-              title="Karty rozdělené po barvách s počítadlem karet v barvě"
+              title={pick(
+                'Karty rozdělené po barvách s počítadlem karet v barvě',
+                'Cards grouped by suit with suit counts'
+              )}
               className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all whitespace-nowrap ${
                 viewMode === 'suits'
                   ? 'bg-white text-slate-900 shadow-xs'
@@ -638,14 +708,17 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
               }`}
             >
               <LayoutGrid className="w-3 h-3" />
-              <span>Po barvách</span>
+              <span>{pick('Po barvách', 'By suit')}</span>
             </button>
           </div>
 
           <button
             type="button"
             onClick={() => setShowHcpBadges((prev) => !prev)}
-            title="Zobrazit nebo skrýt nápovědu bodů (A=4, K=3, Q=2, J=1) na kartách"
+            title={pick(
+              'Zobrazit nebo skrýt nápovědu bodů (A=4, K=3, Q=2, J=1) na kartách',
+              'Show or hide HCP badges (A=4, K=3, Q=2, J=1) on cards'
+            )}
             className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 ${
               showHcpBadges
                 ? 'bg-amber-50 border-amber-300 text-amber-900'
@@ -657,7 +730,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
             ) : (
               <EyeOff className="w-3.5 h-3.5" />
             )}
-            <span className="hidden sm:inline">Body na kartách</span>
+            <span className="hidden sm:inline">{pick('Body na kartách', 'HCP badges')}</span>
             <span className="sm:hidden">HCP</span>
           </button>
 
@@ -667,7 +740,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
             className="px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-semibold flex items-center gap-1 whitespace-nowrap shrink-0"
           >
             <HelpCircle className="w-3.5 h-3.5" />
-            <span>Pravidla</span>
+            <span>{pick('Pravidla', 'Rules')}</span>
           </button>
 
           <button
@@ -676,7 +749,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
             className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition-transform whitespace-nowrap shrink-0"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Nová hra</span>
+            <span>{pick('Nová hra', 'New deal')}</span>
           </button>
         </div>
       </div>
@@ -715,7 +788,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
           }`}
         >
           <div className="w-full flex flex-wrap items-center justify-center gap-1.5 text-xs text-white font-bold">
-            <span>{SEAT_LABELS.north}</span>
+            <span>{getSeatLabel('north', lang)}</span>
             {announcedSeats.includes('north') && (
               <span className="px-1.5 py-0.5 rounded bg-amber-400/20 border border-amber-300/35 text-amber-200 text-[11px] font-mono tabular-nums">
                 {hcpBySeat.north} HCP
@@ -723,12 +796,12 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
             )}
             {dummySeat === 'north' && (
               <span className="px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-100 text-[10px] font-semibold">
-                Tichý hráč (Dummy)
+                {pick('Tichý hráč (Dummy)', 'Dummy')}
               </span>
             )}
             {isNorthTurnByHuman && (
               <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wide">
-                Vyber kartu Dummyho!
+                {pick('Vyber kartu Dummyho!', 'Pick Dummy’s card!')}
               </span>
             )}
           </div>
@@ -737,7 +810,10 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
             renderOpenCards('north', 'sm', isNorthTurnByHuman)
           ) : (
             <div className="py-2 px-3 rounded-lg bg-black/20 border border-white/10 text-[11px] font-semibold text-emerald-100/85 tabular-nums">
-              {hands.north.length} karet připraveno k vyložení po hlášení bodů
+              {pick(
+                `${hands.north.length} karet připraveno k vyložení po hlášení bodů`,
+                `${hands.north.length} cards ready to expose after HCP count`
+              )}
             </div>
           )}
         </div>
@@ -777,7 +853,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
             {phase === 'ANNOUNCING_HCP' && (
               <div className="w-full max-w-sm flex flex-col items-center gap-2.5 text-white text-center">
                 <div className="text-xs font-bold uppercase tracking-wider text-amber-300">
-                  Fáze 1 · Oznámení bodů (HCP)
+                  {pick('Fáze 1 · Oznámení bodů (HCP)', 'Phase 1 · High Card Points (HCP)')}
                 </div>
                 <div className="grid grid-cols-2 gap-2 w-full text-xs tabular-nums">
                   {(['north', 'east', 'south', 'west'] as Seat[]).map((s) => {
@@ -791,9 +867,9 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                             : 'bg-black/20 border-white/10 text-white/50'
                         }`}
                       >
-                        <div className="font-semibold">{SEAT_SHORT_LABELS[s]}</div>
+                        <div className="font-semibold">{getSeatShortLabel(s, lang)}</div>
                         <div className="text-sm font-extrabold text-amber-300">
-                          {shown ? `${hcpBySeat[s]} b.` : '…'}
+                          {shown ? `${hcpBySeat[s]} ${pick('b.', 'HCP')}` : '…'}
                         </div>
                       </div>
                     );
@@ -801,8 +877,8 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                 </div>
                 {declarerInfo && (
                   <div className="text-xs font-semibold text-emerald-100 tabular-nums">
-                    Sever + Jih: <strong>{declarerInfo.nsTotal}</strong> · Východ + Západ:{' '}
-                    <strong>{declarerInfo.ewTotal}</strong>
+                    {pick('Sever + Jih:', 'North + South:')} <strong>{declarerInfo.nsTotal}</strong> ·{' '}
+                    {pick('Východ + Západ:', 'East + West:')} <strong>{declarerInfo.ewTotal}</strong>
                   </div>
                 )}
               </div>
@@ -815,10 +891,14 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                   <>
                     <div className="text-center">
                       <div className="text-xs font-bold text-amber-300">
-                        Fáze 2 · Jsi Vydražitel! Vyber trumfy a závazek
+                        {pick(
+                          'Fáze 2 · Jsi Vydražitel! Vyber trumfy a závazek',
+                          'Phase 2 · You are Declarer! Pick trumps & contract'
+                        )}
                       </div>
                       <div className="text-[11px] text-emerald-100 mt-0.5 tabular-nums">
-                        Společné body Sever + Jih: <strong>{declarerInfo.nsTotal} HCP</strong> · Počet karet:{' '}
+                        {pick('Společné body Sever + Jih:', 'Combined North + South:')}{' '}
+                        <strong>{declarerInfo.nsTotal} HCP</strong> · {pick('Počet karet:', 'Suit counts:')}{' '}
                         ♠ {nsSuitCounts.spades} · ♥ {nsSuitCounts.hearts} · ♦ {nsSuitCounts.diamonds} · ♣ {nsSuitCounts.clubs}
                       </div>
                     </div>
@@ -840,7 +920,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                             } ${info.isRed ? 'text-rose-600' : 'text-slate-900'}`}
                           >
                             <span className="text-base leading-none">{info.symbol}</span>
-                            <span className="text-[10px] mt-0.5">{info.labelCs}</span>
+                            <span className="text-[10px] mt-0.5">{getSuitLabel(suit, lang)}</span>
                             <span className="text-[10px] text-slate-500 tabular-nums">
                               ({nsSuitCounts[suit]})
                             </span>
@@ -857,7 +937,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                         }`}
                       >
                         <span className="text-sm font-black leading-none">NT</span>
-                        <span className="text-[10px] mt-0.5">Bez trumfů</span>
+                        <span className="text-[10px] mt-0.5">{pick('Bez trumfů', 'No Trump')}</span>
                         <span className="text-[10px] text-slate-500">—</span>
                       </button>
                     </div>
@@ -873,7 +953,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                             : 'bg-emerald-950/60 text-white border-white/20 hover:bg-emerald-950/80'
                         }`}
                       >
-                        Částečná hra (7 zdvihů)
+                        {pick('Částečná hra (7 zdvihů)', 'Part-score (7 tricks)')}
                       </button>
                       <button
                         type="button"
@@ -884,13 +964,17 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                             : 'bg-emerald-950/60 text-white border-white/20 hover:bg-emerald-950/80'
                         }`}
                       >
-                        Hra ({getRequiredTricks(selectedTrump, 'game')} zdvihů)
+                        {pick(
+                          `Hra (${getRequiredTricks(selectedTrump, 'game')} zdvihů)`,
+                          `Game (${getRequiredTricks(selectedTrump, 'game')} tricks)`
+                        )}
                       </button>
                     </div>
 
                     {southRecommendation && (
                       <p className="text-[11px] text-amber-200 text-center leading-snug">
-                        Rada trenéra: {southRecommendation.reasonCs}
+                        {pick('Rada trenéra:', 'Coach tip:')}{' '}
+                        {isEn ? southRecommendation.reasonEn : southRecommendation.reasonCs}
                       </p>
                     )}
 
@@ -899,13 +983,16 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                       onClick={handleConfirmSouthContract}
                       className="w-full py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md active:scale-95 transition-transform"
                     >
-                      Potvrdit závazek a začít hrát
+                      {pick('Potvrdit závazek a začít hrát', 'Confirm contract & start play')}
                     </button>
                   </>
                 ) : (
                   <div className="text-center flex flex-col gap-2 py-4">
                     <div className="text-xs font-bold text-amber-300">
-                      Fáze 2 · {SEAT_SHORT_LABELS[declarerInfo.declarer]} volí závazek…
+                      {pick(
+                        `Fáze 2 · ${getSeatShortLabel(declarerInfo.declarer, lang)} volí závazek…`,
+                        `Phase 2 · ${getSeatShortLabel(declarerInfo.declarer, lang)} is choosing a contract…`
+                      )}
                     </div>
                     <p className="text-xs text-emerald-100 leading-relaxed max-w-xs">
                       {aiContractReason}
@@ -933,7 +1020,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                     />
                   ) : (
                     <div className="w-12 h-[70px] sm:w-14 sm:h-[82px] rounded-xl border border-dashed border-white/25 bg-black/15 flex items-center justify-center text-[11px] text-white/45 font-bold">
-                      S
+                      {getSeatInitial('north', lang)}
                     </div>
                   )}
                 </div>
@@ -953,7 +1040,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                     />
                   ) : (
                     <div className="w-12 h-[70px] sm:w-14 sm:h-[82px] rounded-xl border border-dashed border-white/25 bg-black/15 flex items-center justify-center text-[11px] text-white/45 font-bold">
-                      Z
+                      {getSeatInitial('west', lang)}
                     </div>
                   )}
                 </div>
@@ -961,7 +1048,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                 {/* Center trick & trump hub */}
                 <div className="col-start-2 row-start-2 flex flex-col items-center justify-center text-center px-2 py-1.5 rounded-xl bg-black/30 border border-white/15">
                   <span className="text-[9px] uppercase tracking-wider text-emerald-100/75 font-bold">
-                    Zdvih
+                    {pick('Zdvih', 'Trick')}
                   </span>
                   <span className="text-xs sm:text-sm font-black text-amber-300 tabular-nums leading-tight">
                     {tricksWon.NS + tricksWon.EW + 1}/13
@@ -990,7 +1077,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                     />
                   ) : (
                     <div className="w-12 h-[70px] sm:w-14 sm:h-[82px] rounded-xl border border-dashed border-white/25 bg-black/15 flex items-center justify-center text-[11px] text-white/45 font-bold">
-                      V
+                      {getSeatInitial('east', lang)}
                     </div>
                   )}
                 </div>
@@ -1010,7 +1097,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                     />
                   ) : (
                     <div className="w-12 h-[70px] sm:w-14 sm:h-[82px] rounded-xl border border-dashed border-white/25 bg-black/15 flex items-center justify-center text-[11px] text-white/45 font-bold">
-                      J
+                      {getSeatInitial('south', lang)}
                     </div>
                   )}
                 </div>
@@ -1030,19 +1117,36 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                   ) : (
                     <AlertCircle className="w-5 h-5" />
                   )}
-                  <span>{contractMade ? 'Splněno!' : 'Nesplněno'}</span>
+                  <span>
+                    {contractMade ? pick('Splněno!', 'Contract made!') : pick('Nesplněno', 'Contract down')}
+                  </span>
                 </div>
 
                 <div className="text-xs text-slate-600 leading-relaxed tabular-nums">
-                  Vydražitel <strong>{SEAT_SHORT_LABELS[contract.declarer]}</strong> (
-                  {contract.partnership === 'NS' ? 'Sever + Jih' : 'Východ + Západ'}) hrál{' '}
-                  <strong>{getTrumpLabel(contract.trump)}</strong> a získal{' '}
-                  <strong>{declarerTricksWon}</strong> ze{' '}
-                  <strong>{contract.targetTricks}</strong> potřebných zdvihů.
+                  {isEn ? (
+                    <>
+                      Declarer <strong>{getSeatShortLabel(contract.declarer, lang)}</strong> (
+                      {contract.partnership === 'NS' ? 'North + South' : 'East + West'}) played{' '}
+                      <strong>{getTrumpLabel(contract.trump, lang)}</strong> and won{' '}
+                      <strong>{declarerTricksWon}</strong> of{' '}
+                      <strong>{contract.targetTricks}</strong> required tricks.
+                    </>
+                  ) : (
+                    <>
+                      Vydražitel <strong>{getSeatShortLabel(contract.declarer, lang)}</strong> (
+                      {contract.partnership === 'NS' ? 'Sever + Jih' : 'Východ + Západ'}) hrál{' '}
+                      <strong>{getTrumpLabel(contract.trump, lang)}</strong> a získal{' '}
+                      <strong>{declarerTricksWon}</strong> ze{' '}
+                      <strong>{contract.targetTricks}</strong> potřebných zdvihů.
+                    </>
+                  )}
                 </div>
 
                 <div className="text-xs font-bold text-slate-800 bg-slate-100 rounded-lg px-3 py-1.5 tabular-nums">
-                  Celkové zdvihy · Sever + Jih: {tricksWon.NS} · Východ + Západ: {tricksWon.EW}
+                  {pick(
+                    `Celkové zdvihy · Sever + Jih: ${tricksWon.NS} · Východ + Západ: ${tricksWon.EW}`,
+                    `Total tricks · North + South: ${tricksWon.NS} · East + West: ${tricksWon.EW}`
+                  )}
                 </div>
 
                 <button
@@ -1050,7 +1154,7 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
                   onClick={() => startNewDeal()}
                   className="w-full py-2.5 px-4 rounded-xl bg-[#2d5a27] hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm transition-colors active:scale-95"
                 >
-                  Nová hra
+                  {pick('Nová hra', 'New deal')}
                 </button>
 
                 <SwitchGameStrip currentGame="minibridge" onSelectGame={onSelectGame} />
@@ -1075,18 +1179,18 @@ export const MinibridgeGame: React.FC<MinibridgeGameProps> = ({ realTimeCheck, o
           }`}
         >
           <div className="w-full flex flex-wrap items-center justify-center gap-1.5 text-xs text-white font-bold">
-            <span>{SEAT_LABELS.south}</span>
+            <span>{getSeatLabel('south', lang)}</span>
             <span className="px-1.5 py-0.5 rounded bg-amber-400/20 border border-amber-300/35 text-amber-200 text-[11px] font-mono tabular-nums">
               {hcpBySeat.south} HCP
             </span>
             {declarerSeat === 'south' && (
               <span className="px-1.5 py-0.5 rounded bg-white/15 text-amber-200 text-[10px] font-semibold">
-                Vydražitel
+                {pick('Vydražitel', 'Declarer')}
               </span>
             )}
             {isSouthTurnByHuman && (
               <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wide">
-                Jsi na tahu!
+                {pick('Jsi na tahu!', 'Your turn!')}
               </span>
             )}
           </div>

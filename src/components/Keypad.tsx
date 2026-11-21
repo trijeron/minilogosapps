@@ -1,5 +1,6 @@
 import React from 'react';
-import { Undo2, Eraser, Edit3, Lightbulb, RotateCcw, Check } from 'lucide-react';
+import { Undo2, Eraser, Edit3, Lightbulb, RotateCcw } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface KeypadProps {
   onNumberSelect: (num: number) => void;
@@ -28,6 +29,7 @@ export const Keypad: React.FC<KeypadProps> = ({
   remainingCounts,
   disabled = false,
 }) => {
+  const { pick } = useLanguage();
   return (
     <div className="w-full flex flex-col gap-2.5 max-w-[420px] mx-auto">
       {/* Action Tools Row */}
@@ -42,10 +44,10 @@ export const Keypad: React.FC<KeypadProps> = ({
               ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs'
               : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
           }`}
-          title="Vrátit poslední tah"
+          title={pick('Vrátit poslední tah', 'Undo last move')}
         >
           <Undo2 className="w-4 h-4 mb-0.5" />
-          <span className="text-[10px] tracking-tight">Zpět</span>
+          <span className="text-[10px] tracking-tight">{pick('Zpět', 'Undo')}</span>
         </button>
 
         {/* 2. Erase */}
@@ -54,10 +56,10 @@ export const Keypad: React.FC<KeypadProps> = ({
           onClick={onErase}
           disabled={disabled}
           className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs transition-all text-xs font-semibold"
-          title="Smazat hodnotu nebo poznámku"
+          title={pick('Smazat hodnotu nebo poznámku', 'Erase digit or note')}
         >
           <Eraser className="w-4 h-4 mb-0.5 text-slate-600" />
-          <span className="text-[10px] tracking-tight">Smazat</span>
+          <span className="text-[10px] tracking-tight">{pick('Smazat', 'Erase')}</span>
         </button>
 
         {/* 3. Notes Toggle */}
@@ -70,11 +72,15 @@ export const Keypad: React.FC<KeypadProps> = ({
               ? 'bg-indigo-600 border-indigo-700 text-white shadow-sm ring-2 ring-indigo-200'
               : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs'
           }`}
-          title={notesMode ? 'Režim poznámek: Zapnuto' : 'Režim poznámek: Vypnuto'}
+          title={
+            notesMode
+              ? pick('Režim poznámek: Zapnuto', 'Notes mode: On')
+              : pick('Režim poznámek: Vypnuto', 'Notes mode: Off')
+          }
         >
           <Edit3 className="w-4 h-4 mb-0.5" />
           <span className="text-[10px] tracking-tight">
-            {notesMode ? 'Pozn. ZAP' : 'Poznámky'}
+            {notesMode ? pick('Pozn. ZAP', 'Notes ON') : pick('Poznámky', 'Notes')}
           </span>
           {notesMode && (
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-white" />
@@ -91,13 +97,13 @@ export const Keypad: React.FC<KeypadProps> = ({
               ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 active:scale-95 shadow-2xs'
               : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
           }`}
-          title={`Nápověda (zbývá: ${hintsLeft}/3)`}
+          title={pick(`Nápověda (zbývá: ${hintsLeft}/3)`, `Hint (${hintsLeft}/3 left)`)}
         >
           <Lightbulb
             className={`w-4 h-4 mb-0.5 ${hintsLeft > 0 ? 'fill-amber-400 text-amber-600' : 'text-slate-300'}`}
           />
           <span className="text-[10px] tracking-tight">
-            Nápověda <span className="font-mono">({hintsLeft})</span>
+            {pick('Nápověda', 'Hint')} <span className="font-mono">({hintsLeft})</span>
           </span>
         </button>
 
@@ -107,7 +113,10 @@ export const Keypad: React.FC<KeypadProps> = ({
           onClick={onResetBoard}
           disabled={disabled}
           className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 active:scale-95 shadow-2xs transition-all text-xs font-semibold"
-          title="Resetovat hřiště do původního stavu (nápovědy zůstávají)"
+          title={pick(
+            'Resetovat hřiště do původního stavu (nápovědy zůstávají)',
+            'Reset board to initial state (hints remain)'
+          )}
         >
           <RotateCcw className="w-4 h-4 mb-0.5 text-slate-600" />
           <span className="text-[10px] tracking-tight">Reset</span>
@@ -144,14 +153,14 @@ export const Keypad: React.FC<KeypadProps> = ({
                 {isCompleted ? (
                   <span className="text-emerald-600 font-bold">0 ✓</span>
                 ) : (
-                  `${remaining} zbývá`
+                  pick(`${remaining} zbývá`, `${remaining} left`)
                 )}
               </span>
 
               {/* Notes mode tiny indicator dot */}
               {notesMode && (
                 <span className="absolute top-1 right-1.5 text-[8px] text-indigo-600 font-mono font-bold leading-none">
-                  P
+                  {pick('P', 'N')}
                 </span>
               )}
             </button>

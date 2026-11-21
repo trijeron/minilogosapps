@@ -1,5 +1,6 @@
 import React from 'react';
-import { AlertTriangle, AlertOctagon } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface ErrorAlertBannerProps {
   hasError: boolean;
@@ -12,6 +13,7 @@ export const ErrorAlertBanner: React.FC<ErrorAlertBannerProps> = ({
   message,
   detail,
 }) => {
+  const { pick } = useLanguage();
   if (!hasError) return null;
 
   return (
@@ -21,7 +23,7 @@ export const ErrorAlertBanner: React.FC<ErrorAlertBannerProps> = ({
       </div>
       <div className="flex-1 flex flex-col">
         <span className="text-xs font-bold leading-tight flex items-center gap-1 text-rose-800">
-          <span>Pozor: Zjištěna chyba v pravidlech!</span>
+          <span>{pick('Pozor: Zjištěna chyba v pravidlech!', 'Warning: Rule violation detected!')}</span>
         </span>
         <span className="text-[11px] text-rose-700 font-medium leading-snug mt-0.5">
           {message}

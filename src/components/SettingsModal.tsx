@@ -27,6 +27,7 @@ import {
 } from '../types/learningGate';
 import {
   DEFAULT_ENGLISH_TASKS_JSON,
+  DEFAULT_EN_QUIZ_TASKS_JSON,
   RemoteCatalogItem,
   parseLearningTasksJson,
   parseRemoteTasksOrCatalog,
@@ -38,6 +39,7 @@ import {
 } from '../utils/storage';
 import { formatTime } from '../utils/format';
 import { PWAInstallButton } from './PWAInstallButton';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -64,6 +66,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onPreviewTasks,
   onClose,
 }) => {
+  const { lang, isEn, pick } = useLanguage();
   const [draft, setDraft] = useState<LearningGateSettings>(settings);
   const [setName, setSetName] = useState<string>('');
   const [showSchemaHelp, setShowSchemaHelp] = useState(false);
@@ -95,8 +98,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   }, [isOpen]);
 
   const jsonValidation = useMemo(
-    () => parseLearningTasksJson(draft.customJson),
-    [draft.customJson]
+    () => parseLearningTasksJson(draft.customJson, lang),
+    [draft.customJson, lang]
   );
 
   if (!isOpen) return null;
@@ -114,7 +117,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onSaveToHistory(normalizedJson, importedName);
     setImportFeedback({
       type: 'success',
-      message: `Načtena sada${importedName ? ` „${importedName}“` : ''} ${sourceLabel} (${taskCount} úkolů).`,
+      message: isEn
+        ? `Loaded set${importedName ? ` "${importedName}"` : ''} ${sourceLabel} (${taskCount} tasks).`
+        : `Načtena sada${importedName ? ` „${importedName}“` : ''} ${sourceLabel} (${taskCount} úkolů).`,
     });
   };
 
@@ -133,7 +138,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (jsonCandidates.length === 0) {
       setImportFeedback({
         type: 'error',
-        message: 'Ve vybrané složce nebyl nalezen žádný .json soubor.',
+        message: pick(
+          'Ve vybrané složce nebyl nalezen žádný .json soubor.',
+          'No .json file was found in the selected folder.'
+        ),
       });
       return;
     }
@@ -149,7 +157,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     for (const file of jsonCandidates) {
       try {
         const text = await file.text();
-        const res = parseRemoteTasksOrCatalog(text, file.name);
+        const res = parseRemoteTasksOrCatalog(text, file.name, lang);
         if (res.kind === 'tasks') {
           importedSets.push({
             name: res.name,
@@ -168,7 +176,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             }
           } else {
             skipped++;
-            lastError = `Soubor ${file.name} obsahuje pouze webový katalog odkazů.`;
+            lastError = isEn
+              ? `File ${file.name} only contains a remote URL catalog.`
+              : `Soubor ${file.name} obsahuje pouze webový katalog odkazů.`;
           }
         } else {
           skipped++;
@@ -176,14 +186,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
       } catch {
         skipped++;
-        lastError = `Soubor ${file.name} se nepodařilo přečíst.`;
+        lastError = isEn
+          ? `Could not read file ${file.name}.`
+          : `Soubor ${file.name} se nepodařilo přečíst.`;
       }
     }
 
     if (importedSets.length === 0) {
       setImportFeedback({
         type: 'error',
-        message: lastError || 'Nepodařilo se načíst žádný platný JSON soubor s úkoly.',
+        message:
+          lastError ||
+          pick(
+            'Nepodařilo se načíst žádný platný JSON soubor s úkoly.',
+            'Failed to load any valid JSON task file.'
+          ),
       });
       return;
     }
@@ -201,18 +218,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (importedSets.length === 1) {
       setImportFeedback({
         type: 'success',
-        message: `Načtena sada${first.name ? ` „${first.name}“` : ''} ze souboru (${first.taskCount} úkolů)${skipped > 0 ? ` · přeskočeno ${skipped}` : ''}.`,
+        message: isEn
+          ? `Loaded set${first.name ? ` "${first.name}"` : ''} from file (${first.taskCount} tasks)${skipped > 0 ? ` · skipped ${skipped}` : ''}.`
+          : `Načtena sada${first.name ? ` „${first.name}“` : ''} ze souboru (${first.taskCount} úkolů)${skipped > 0 ? ` · přeskočeno ${skipped}` : ''}.`,
       });
     } else {
       setImportFeedback({
         type: 'success',
-        message: `Načteno ${importedSets.length} sad ${fromFolder ? 'ze složky' : 'ze souborů'} (aktivní: „${first.name || 'Sada 1'}“)${skipped > 0 ? ` · přeskočeno ${skipped}` : ''}.`,
+        message: isEn
+          ? `Loaded ${importedSets.length} sets ${fromFolder ? 'from folder' : 'from files'} (active: "${first.name || 'Set 1'}")${skipped > 0 ? ` · skipped ${skipped}` : ''}.`
+          : `Načteno ${importedSets.length} sad ${fromFolder ? 'ze složky' : 'ze souborů'} (aktivní: „${first.name || 'Sada 1'}“)${skipped > 0 ? ` · přeskočeno ${skipped}` : ''}.`,
       });
     }
   };
 
   const fetchJsonFromUrl = async (targetUrl: string, overrideName?: string) => {
-    const validated = validateTaskSourceUrl(targetUrl);
+    const validated = validateTaskSourceUrl(targetUrl, lang);
     if (!validated.ok) {
       setImportFeedback({ type: 'error', message: validated.error });
       return;
@@ -225,10 +246,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const response = await fetch(validated.url, { cache: 'no-store' });
       if (!response.ok) {
-        throw new Error(`Server vrátil chybu HTTP ${response.status}.`);
+        throw new Error(
+          isEn
+            ? `Server returned HTTP ${response.status}.`
+            : `Server vrátil chybu HTTP ${response.status}.`
+        );
       }
       const text = await response.text();
-      const parsed = parseRemoteTasksOrCatalog(text, validated.url);
+      const parsed = parseRemoteTasksOrCatalog(text, validated.url, lang);
 
       if (parsed.kind === 'error') {
         setImportFeedback({ type: 'error', message: parsed.error });
@@ -239,7 +264,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setWebCatalog(parsed.items);
         setImportFeedback({
           type: 'success',
-          message: `Načten webový katalog (${parsed.items.length} sad) — klikněte na sadu níže.`,
+          message: isEn
+            ? `Loaded web catalog (${parsed.items.length} sets) — pick a set below.`
+            : `Načten webový katalog (${parsed.items.length} sad) — klikněte na sadu níže.`,
         });
         return;
       }
@@ -249,13 +276,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         parsed.normalizedJson,
         finalName,
         parsed.tasks.length,
-        'z webu'
+        pick('z webu', 'from web')
       );
     } catch (err) {
       const msg =
-        err instanceof Error && err.message.startsWith('Server vrátil')
+        err instanceof Error &&
+        (err.message.startsWith('Server vrátil') || err.message.startsWith('Server returned'))
           ? err.message
-          : 'Soubor se nepodařilo stáhnout. Zkontrolujte URL, připojení nebo CORS nastavení na serveru.';
+          : pick(
+              'Soubor se nepodařilo stáhnout. Zkontrolujte URL, připojení nebo CORS nastavení na serveru.',
+              'Failed to download file. Check the URL, connection, or server CORS headers.'
+            );
       setImportFeedback({ type: 'error', message: msg });
     } finally {
       setIsLoadingWeb(false);
@@ -264,13 +295,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSelectCatalogItem = async (item: RemoteCatalogItem) => {
     if (item.inlineJson) {
-      const check = parseLearningTasksJson(item.inlineJson);
+      const check = parseLearningTasksJson(item.inlineJson, lang);
       if (check.ok) {
         applyImportedTaskSet(
           item.inlineJson,
           item.name,
           check.tasks.length,
-          'z webového katalogu'
+          pick('z webového katalogu', 'from web catalog')
         );
       }
       return;
@@ -289,18 +320,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const normalizedDraftJson = draft.customJson.trim();
 
   const formatGamesBadge = (count: number) => {
-    if (count === 0) return 'Nikdy (0)';
+    if (count === 0) return pick('Nikdy (0)', 'Never (0)');
+    if (isEn) return count === 1 ? '1 game' : `${count} games`;
     if (count === 1) return '1 hra';
     if (count >= 2 && count <= 4) return `${count} hry`;
     return `${count} her`;
   };
 
   const formatMinutesBadge = (mins: number) => {
-    if (mins === 0) return 'Nikdy (0)';
+    if (mins === 0) return pick('Nikdy (0)', 'Never (0)');
     return `${mins} min`;
   };
 
   const formatQuestionsBadge = (count: number) => {
+    if (isEn) return count === 1 ? '1 question' : `${count} questions`;
     if (count === 1) return '1 otázka';
     if (count >= 2 && count <= 4) return `${count} otázky`;
     return `${count} otázek`;
@@ -360,10 +393,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-black text-slate-900 leading-tight">
-                Nastavení učitelského módu
+                {pick('Nastavení učitelského módu', 'Teacher Mode Settings')}
               </h2>
               <p className="text-xs text-slate-500">
-                Limity, historie úkolů v sessionStorage a offline stažení
+                {pick(
+                  'Limity, historie úkolů v sessionStorage a offline stažení',
+                  'Limits, task history in sessionStorage & offline download'
+                )}
               </p>
             </div>
           </div>
@@ -371,7 +407,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             type="button"
             onClick={onClose}
             className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            aria-label="Zavřít"
+            aria-label={pick('Zavřít', 'Close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -381,10 +417,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <label className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80 cursor-pointer">
           <div>
             <p className="text-sm font-bold text-slate-900">
-              Aktivovat učící úkoly po limitu
+              {pick('Aktivovat učící úkoly po limitu', 'Enable learning tasks after limit')}
             </p>
             <p className="text-xs text-slate-500">
-              Po dosažení limitu se otevře okno s úkolem (např. angličtina)
+              {pick(
+                'Po dosažení limitu se otevře okno s úkolem (např. angličtina)',
+                'Opens a learning break popup when a game or time limit is reached'
+              )}
             </p>
           </div>
           <input
@@ -401,9 +440,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <p className="text-xs font-extrabold text-slate-700">
-              Kdy se má okno zobrazit
+              {pick('Kdy se má okno zobrazit', 'When to trigger a break')}
             </p>
-            <span className="text-[11px] text-slate-500">0 = nikdy</span>
+            <span className="text-[11px] text-slate-500">{pick('0 = nikdy', '0 = never')}</span>
           </div>
 
           {/* Games limit slider (0–10) */}
@@ -411,12 +450,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center justify-between gap-2">
               <div>
                 <span className="text-xs sm:text-sm font-bold text-slate-900">
-                  Počet odehraných her
+                  {pick('Počet odehraných her', 'Completed games limit')}
                 </span>
                 <p className="text-[11px] text-slate-500">
                   {effectiveGamesLimit === 0
-                    ? 'Vypnuto — po dokončení her se okno neotevře'
-                    : `Otevře se po každých ${formatGamesBadge(effectiveGamesLimit)}`}
+                    ? pick(
+                        'Vypnuto — po dokončení her se okno neotevře',
+                        'Off — break will not trigger after games'
+                      )
+                    : pick(
+                        `Otevře se po každých ${formatGamesBadge(effectiveGamesLimit)}`,
+                        `Triggers after every ${formatGamesBadge(effectiveGamesLimit)}`
+                      )}
                 </p>
               </div>
               <span
@@ -435,7 +480,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="button"
                 onClick={() => setGamesLimitValue(effectiveGamesLimit - 1)}
                 disabled={effectiveGamesLimit <= 0}
-                aria-label="Snížit počet her"
+                aria-label={pick('Snížit počet her', 'Decrease games limit')}
                 className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
               >
                 <Minus className="w-4 h-4" />
@@ -447,23 +492,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 step={1}
                 value={effectiveGamesLimit}
                 onChange={(e) => setGamesLimitValue(Number(e.target.value))}
-                aria-label="Limit počtu her (0 až 10)"
+                aria-label={pick('Limit počtu her (0 až 10)', 'Games limit (0 to 10)')}
                 className="flex-1 h-2.5 accent-indigo-600 cursor-pointer touch-pan-x"
               />
               <button
                 type="button"
                 onClick={() => setGamesLimitValue(effectiveGamesLimit + 1)}
                 disabled={effectiveGamesLimit >= 10}
-                aria-label="Zvýšit počet her"
+                aria-label={pick('Zvýšit počet her', 'Increase games limit')}
                 className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
             <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-10">
-              <span>0 (Nikdy)</span>
+              <span>{pick('0 (Nikdy)', '0 (Never)')}</span>
               <span>5</span>
-              <span>10 her</span>
+              <span>{pick('10 her', '10 games')}</span>
             </div>
           </div>
 
@@ -472,12 +517,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center justify-between gap-2">
               <div>
                 <span className="text-xs sm:text-sm font-bold text-slate-900">
-                  Časový limit hraní
+                  {pick('Časový limit hraní', 'Play time limit')}
                 </span>
                 <p className="text-[11px] text-slate-500">
                   {effectiveMinutesLimit === 0
-                    ? 'Vypnuto — časový limit je neaktivní'
-                    : `Otevře se každých ${effectiveMinutesLimit} min hraní`}
+                    ? pick(
+                        'Vypnuto — časový limit je neaktivní',
+                        'Off — timer break is disabled'
+                      )
+                    : pick(
+                        `Otevře se každých ${effectiveMinutesLimit} min hraní`,
+                        `Triggers every ${effectiveMinutesLimit} min of play`
+                      )}
                 </p>
               </div>
               <span
@@ -496,7 +547,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="button"
                 onClick={() => setMinutesLimitValue(effectiveMinutesLimit - 1)}
                 disabled={effectiveMinutesLimit <= 0}
-                aria-label="Snížit časový limit"
+                aria-label={pick('Snížit časový limit', 'Decrease time limit')}
                 className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
               >
                 <Minus className="w-4 h-4" />
@@ -508,21 +559,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 step={1}
                 value={effectiveMinutesLimit}
                 onChange={(e) => setMinutesLimitValue(Number(e.target.value))}
-                aria-label="Časový limit v minutách (0 až 10)"
+                aria-label={pick('Časový limit v minutách (0 až 10)', 'Time limit in minutes (0 to 10)')}
                 className="flex-1 h-2.5 accent-indigo-600 cursor-pointer touch-pan-x"
               />
               <button
                 type="button"
                 onClick={() => setMinutesLimitValue(effectiveMinutesLimit + 1)}
                 disabled={effectiveMinutesLimit >= 10}
-                aria-label="Zvýšit časový limit"
+                aria-label={pick('Zvýšit časový limit', 'Increase time limit')}
                 className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
             <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-10">
-              <span>0 (Nikdy)</span>
+              <span>{pick('0 (Nikdy)', '0 (Never)')}</span>
               <span>5 min</span>
               <span>10 min</span>
             </div>
@@ -530,8 +581,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {noTriggerSelected && (
             <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              Oba posuvníky jsou na 0 (Nikdy) — nastavte alespoň 1 hru nebo 1
-              minutu, aby se přestávka spouštěla.
+              {pick(
+                'Oba posuvníky jsou na 0 (Nikdy) — nastavte alespoň 1 hru nebo 1 minutu, aby se přestávka spouštěla.',
+                'Both sliders are set to 0 (Never) — set at least 1 game or 1 minute for breaks to trigger.'
+              )}
             </p>
           )}
         </div>
@@ -543,10 +596,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center justify-between gap-2">
               <div>
                 <span className="text-xs sm:text-sm font-bold text-slate-900">
-                  Počet otázek pro pokračování
+                  {pick('Počet otázek pro pokračování', 'Questions required to continue')}
                 </span>
                 <p className="text-[11px] text-slate-500">
-                  Kolik otázek musí hráč správně vyřešit, aby mohl hrát dál
+                  {pick(
+                    'Kolik otázek musí hráč správně vyřešit, aby mohl hrát dál',
+                    'How many questions must be solved correctly to resume playing'
+                  )}
                 </p>
               </div>
               <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold tabular-nums shrink-0 bg-indigo-100 text-indigo-800">
@@ -559,7 +615,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="button"
                 onClick={() => setTasksPerBreakValue(effectiveTasksPerBreak - 1)}
                 disabled={effectiveTasksPerBreak <= 1}
-                aria-label="Snížit počet otázek pro pokračování"
+                aria-label={pick('Snížit počet otázek pro pokračování', 'Decrease questions count')}
                 className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
               >
                 <Minus className="w-4 h-4" />
@@ -571,23 +627,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 step={1}
                 value={effectiveTasksPerBreak}
                 onChange={(e) => setTasksPerBreakValue(Number(e.target.value))}
-                aria-label="Počet otázek pro pokračování (1 až 10)"
+                aria-label={pick('Počet otázek pro pokračování (1 až 10)', 'Questions per break (1 to 10)')}
                 className="flex-1 h-2.5 accent-indigo-600 cursor-pointer touch-pan-x"
               />
               <button
                 type="button"
                 onClick={() => setTasksPerBreakValue(effectiveTasksPerBreak + 1)}
                 disabled={effectiveTasksPerBreak >= 10}
-                aria-label="Zvýšit počet otázek pro pokračování"
+                aria-label={pick('Zvýšit počet otázek pro pokračování', 'Increase questions count')}
                 className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-35 text-slate-700 flex items-center justify-center shrink-0 transition-colors"
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
             <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-10">
-              <span>1 otázka</span>
+              <span>{pick('1 otázka', '1 question')}</span>
               <span>5</span>
-              <span>10 otázek</span>
+              <span>{pick('10 otázek', '10 questions')}</span>
             </div>
           </div>
 
@@ -597,12 +653,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Shuffle className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs sm:text-sm font-bold text-slate-900">
-                  Náhodné střídání otázek
+                  {pick('Náhodné střídání otázek', 'Randomize question order')}
                 </p>
                 <p className="text-[11px] text-slate-500">
                   {draft.randomOrder
-                    ? 'Otázky se losují náhodně bez opakování, dokud se neprostřídají všechny'
-                    : 'Otázky se zobrazují postupně v pořadí ze zadání'}
+                    ? pick(
+                        'Otázky se losují náhodně bez opakování, dokud se neprostřídají všechny',
+                        'Questions are shuffled without repeats until all have been shown'
+                      )
+                    : pick(
+                        'Otázky se zobrazují postupně v pořadí ze zadání',
+                        'Questions appear sequentially in their original order'
+                      )}
                 </p>
               </div>
             </div>
@@ -619,13 +681,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Current counter status */}
           <div className="flex items-center justify-end gap-2 px-1 text-xs text-slate-500 tabular-nums">
             <span>
-              Odehráno:{' '}
+              {pick('Odehráno:', 'Played:')}{' '}
               <strong className="text-slate-800">
                 {progress.gamesSinceLastGate}
               </strong>
               {effectiveGamesLimit > 0 ? `/${effectiveGamesLimit}` : ''}
               {' · '}
-              Čas:{' '}
+              {pick('Čas:', 'Time:')}{' '}
               <strong className="text-slate-800">
                 {formatTime(progress.secondsSinceLastGate)}
               </strong>
@@ -634,7 +696,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={onResetProgress}
-              title="Vynulovat aktuální počítadlo her a času"
+              title={pick('Vynulovat aktuální počítadlo her a času', 'Reset current game & time counters')}
               className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -647,10 +709,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
               <History className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Předchozí sady úkolů ({taskHistory.length})</span>
+              <span>
+                {pick(
+                  `Předchozí sady úkolů (${taskHistory.length})`,
+                  `Saved task sets (${taskHistory.length})`
+                )}
+              </span>
             </span>
             <span className="text-[11px] text-slate-500">
-              Uloženo v sessionStorage
+              {pick('Uloženo v sessionStorage', 'Stored in sessionStorage')}
             </span>
           </div>
 
@@ -658,6 +725,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {taskHistory.map((entry) => {
               const isSelected = entry.json.trim() === normalizedDraftJson;
               const isDefault = entry.id === 'default_english_v1';
+              const displayName =
+                isDefault && isEn ? 'Default CZ-EN Vocabulary (12 tasks)' : entry.name;
               return (
                 <div
                   key={entry.id}
@@ -675,15 +744,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     }}
                     className="flex-1 text-left min-w-0"
                   >
-                    <p className="text-xs font-bold truncate">{entry.name}</p>
+                    <p className="text-xs font-bold truncate">{displayName}</p>
                     <p className="text-[10px] text-slate-500 truncate">
-                      {entry.taskCount} úkolů · {entry.typesSummary}
+                      {entry.taskCount} {pick('úkolů', 'tasks')} · {entry.typesSummary}
                     </p>
                   </button>
 
                   {isSelected && (
                     <span className="text-[10px] font-bold text-indigo-700 shrink-0">
-                      Vybráno
+                      {pick('Vybráno', 'Selected')}
                     </span>
                   )}
 
@@ -691,7 +760,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => onDeleteHistory(entry.id)}
-                      title="Odebrat sadu z historie"
+                      title={pick('Odebrat sadu z historie', 'Remove set from history')}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -708,7 +777,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
               <FolderOpen className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Načíst úkoly z telefonu nebo z webu</span>
+              <span>
+                {pick('Načíst úkoly z telefonu nebo z webu', 'Load tasks from device or web')}
+              </span>
             </span>
             <span className="text-[10px] text-indigo-700 font-semibold">
               .json
@@ -746,7 +817,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="px-3 py-2 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
             >
               <Upload className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-              <span>Soubor(y) JSON</span>
+              <span>{pick('Soubor(y) JSON', 'JSON File(s)')}</span>
             </button>
             <button
               type="button"
@@ -754,7 +825,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="px-3 py-2 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
             >
               <FolderOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-              <span>Složka v telefonu</span>
+              <span>{pick('Složka v telefonu', 'Device Folder')}</span>
             </button>
           </div>
 
@@ -772,7 +843,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     void fetchJsonFromUrl(webUrl);
                   }
                 }}
-                placeholder="https://ithonza.cz/games/ukoly.json nebo ./ukoly.json"
+                placeholder={pick(
+                  'https://ithonza.cz/games/ukoly.json nebo ./ukoly.json',
+                  'https://example.com/tasks.json or ./tasks.json'
+                )}
                 className="w-full pl-8 pr-2.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -787,7 +861,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ) : (
                 <Globe className="w-3.5 h-3.5" />
               )}
-              <span>Načíst</span>
+              <span>{pick('Načíst', 'Load')}</span>
             </button>
           </div>
 
@@ -795,7 +869,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {webCatalog.length > 0 && (
             <div className="flex flex-col gap-1.5 pt-1 border-t border-indigo-200/70">
               <p className="text-[11px] font-bold text-indigo-900">
-                Vyberte sadu z webového katalogu ({webCatalog.length}):
+                {pick(
+                  `Vyberte sadu z webového katalogu (${webCatalog.length}):`,
+                  `Choose a set from web catalog (${webCatalog.length}):`
+                )}
               </p>
               <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
                 {webCatalog.map((item, idx) => (
@@ -808,7 +885,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   >
                     <span className="truncate">{item.name}</span>
                     <span className="text-[10px] font-semibold text-indigo-600 shrink-0">
-                      {item.taskCount ? `${item.taskCount} úkolů` : 'Stáhnout'}
+                      {item.taskCount
+                        ? `${item.taskCount} ${pick('úkolů', 'tasks')}`
+                        : pick('Stáhnout', 'Download')}
                     </span>
                   </button>
                 ))}
@@ -840,7 +919,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
               <FileCode2 className="w-4 h-4 text-indigo-600" />
-              <span>Zadání úkolů (JSON)</span>
+              <span>{pick('Zadání úkolů (JSON)', 'Task Definition (JSON)')}</span>
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -848,26 +927,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={() => setShowSchemaHelp((prev) => !prev)}
                 className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-semibold text-slate-700"
               >
-                {showSchemaHelp ? 'Skrýt nápovědu JSON' : 'Ukázka formátu'}
+                {showSchemaHelp
+                  ? pick('Skrýt nápovědu JSON', 'Hide JSON format')
+                  : pick('Ukázka formátu', 'Format example')}
               </button>
               <button
                 type="button"
                 onClick={() =>
                   setDraft((prev) => ({
                     ...prev,
-                    customJson: DEFAULT_ENGLISH_TASKS_JSON,
+                    customJson: isEn ? DEFAULT_EN_QUIZ_TASKS_JSON : DEFAULT_ENGLISH_TASKS_JSON,
                   }))
                 }
                 className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-semibold text-indigo-700"
               >
-                Výchozí angličtina
+                {pick('Výchozí angličtina', 'Sample Quiz (EN)')}
               </button>
             </div>
           </div>
 
           {showSchemaHelp && (
             <pre className="p-2.5 rounded-xl bg-slate-900 text-slate-100 text-[10px] font-mono overflow-x-auto leading-relaxed">
-{`[
+              {isEn
+                ? `[
+  {
+    "type": "match",
+    "prompt": "Match countries and capitals",
+    "pairs": [
+      { "left": "France", "right": "Paris" },
+      { "left": "Japan", "right": "Tokyo" }
+    ]
+  },
+  {
+    "type": "fill",
+    "prompt": "Fill in the result: 6 × 7 = ____",
+    "answer": "42",
+    "hint": "Between 40 and 45"
+  },
+  {
+    "type": "choice",
+    "prompt": "Which planet is the Red Planet?",
+    "options": ["Venus", "Mars", "Saturn"],
+    "correctIndex": 1
+  }
+]
+
+// Optional remote catalog of multiple sets:
+// { "sets": [{ "name": "Lesson 1", "url": "./lesson1.json" }] }`
+                : `[
   {
     "type": "match",
     "prompt": "Spoj slova",
@@ -901,7 +1008,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               type="text"
               value={setName}
               onChange={(e) => setSetName(e.target.value)}
-              placeholder="Název sady pro historii (volitelné, např. Slovíčka lekce 4)"
+              placeholder={pick(
+                'Název sady pro historii (volitelné, např. Slovíčka lekce 4)',
+                'Set name for history (optional, e.g. Lesson 4 Quiz)'
+              )}
               className="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -911,11 +1021,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 if (!jsonValidation.ok) return;
                 onSaveToHistory(draft.customJson, setName.trim() || undefined);
               }}
-              title="Uložit aktuální JSON sadu do historie v sessionStorage"
+              title={pick(
+                'Uložit aktuální JSON sadu do historie v sessionStorage',
+                'Save current JSON set to sessionStorage history'
+              )}
               className="px-2.5 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-45 text-indigo-800 text-[11px] font-bold flex items-center gap-1 shrink-0"
             >
               <BookmarkPlus className="w-3.5 h-3.5" />
-              <span>Do historie</span>
+              <span>{pick('Do historie', 'Save set')}</span>
             </button>
           </div>
 
@@ -927,7 +1040,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             rows={7}
             spellCheck={false}
             className="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 font-mono text-[11px] text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white leading-relaxed"
-            placeholder="Vložte JSON pole úkolů..."
+            placeholder={pick('Vložte JSON pole úkolů...', 'Paste a JSON array of tasks...')}
           />
 
           {/* Live Validation Status */}
@@ -936,7 +1049,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>
-                  Platný JSON · Načteno {jsonValidation.tasks.length} úkolů
+                  {pick(
+                    `Platný JSON · Načteno ${jsonValidation.tasks.length} úkolů`,
+                    `Valid JSON · ${jsonValidation.tasks.length} tasks loaded`
+                  )}
                 </span>
               </span>
               <button
@@ -951,7 +1067,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shrink-0"
               >
                 <Play className="w-3 h-3 fill-current" />
-                <span>Vyzkoušet</span>
+                <span>{pick('Vyzkoušet', 'Preview')}</span>
               </button>
             </div>
           ) : (
@@ -965,14 +1081,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Mobile App (PWA) Install Card */}
         <PWAInstallButton variant="card" />
 
-        {/* Offline HTML Download Card (moved from Header into Settings) */}
+        {/* Offline HTML Download Card */}
         <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold text-indigo-950">
-              Offline verze aplikace (6v1 HTML)
+              {pick('Offline verze aplikace (6v1 HTML)', 'Offline App Version (6-in-1 HTML)')}
             </p>
             <p className="text-[11px] text-indigo-700">
-              Stáhněte všech 6 her jako jeden samostatný HTML soubor do PC nebo mobilu.
+              {pick(
+                'Stáhněte všech 6 her jako jeden samostatný HTML soubor do PC nebo mobilu.',
+                'Download all 6 games as a single standalone HTML file for desktop or mobile.'
+              )}
             </p>
           </div>
           <a
@@ -981,7 +1100,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold whitespace-nowrap shadow-xs flex items-center gap-1.5 shrink-0 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Stáhnout HTML</span>
+            <span>{pick('Stáhnout HTML', 'Download HTML')}</span>
           </a>
         </div>
 
@@ -992,7 +1111,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold"
           >
-            Zrušit
+            {pick('Zrušit', 'Cancel')}
           </button>
           <button
             type="button"
@@ -1000,7 +1119,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onClick={handleSaveClick}
             className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-45 text-white text-xs font-bold shadow-xs"
           >
-            Uložit nastavení
+            {pick('Uložit nastavení', 'Save settings')}
           </button>
         </div>
       </div>

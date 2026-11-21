@@ -26,6 +26,7 @@ import {
 } from '../utils/storage';
 import { getDifficultyLabel } from '../utils/format';
 import { GameTab } from './Header';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface TangoGameProps {
   onRulesClick: () => void;
@@ -47,6 +48,7 @@ export const TangoGame: React.FC<TangoGameProps> = ({
   onSelectGame,
   externalPaused = false,
 }) => {
+  const { lang, pick } = useLanguage();
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [puzzle, setPuzzle] = useState<TangoSymbol[]>([]);
   const [solution, setSolution] = useState<TangoSymbol[]>([]);
@@ -248,30 +250,42 @@ export const TangoGame: React.FC<TangoGameProps> = ({
     if (!realTimeCheck) return null;
     if (delayedConflicts.threeInARowCells.size > 0) {
       return {
-        message: 'Více než 2 stejné symboly v řadě!',
-        detail: 'Pravidlo tří: Vedle sebe ani pod sebou nesmí stát 3 stejná slunce nebo 3 měsíce.',
+        message: pick('Více než 2 stejné symboly v řadě!', 'More than 2 identical symbols in a row!'),
+        detail: pick(
+          'Pravidlo tří: Vedle sebe ani pod sebou nesmí stát 3 stejná slunce nebo 3 měsíce.',
+          'Rule of three: No 3 suns or 3 moons may be adjacent horizontally or vertically.'
+        ),
       };
     }
     if (delayedConflicts.overflowRows.size > 0 || delayedConflicts.overflowCols.size > 0) {
       return {
-        message: 'Příliš mnoho stejných symbolů v linii!',
-        detail: 'Rovnováha: V každém řádku a sloupci musí být přesně 3 slunce a 3 měsíce.',
+        message: pick('Příliš mnoho stejných symbolů v linii!', 'Too many identical symbols in a line!'),
+        detail: pick(
+          'Rovnováha: V každém řádku a sloupci musí být přesně 3 slunce a 3 měsíce.',
+          'Balance: Every row and column must contain exactly 3 suns and 3 moons.'
+        ),
       };
     }
     if (delayedConflicts.edgeViolationH.size > 0 || delayedConflicts.edgeViolationV.size > 0) {
       return {
-        message: 'Porušeno rovnítko (=) nebo křížek (×)!',
-        detail: 'Rovnítko vyžaduje stejné symboly, křížek vyžaduje opačné symboly.',
+        message: pick('Porušeno rovnítko (=) nebo křížek (×)!', 'Equals (=) or Cross (×) constraint broken!'),
+        detail: pick(
+          'Rovnítko vyžaduje stejné symboly, křížek vyžaduje opačné symboly.',
+          'Equals requires matching symbols; cross requires opposite symbols.'
+        ),
       };
     }
     if (delayedConflicts.violatingCells.size > 0) {
       return {
-        message: 'Zjištěn konflikt pravidel hry Tango.',
-        detail: 'Zkontrolujte pravidla tří, rovnováhu a značky sousedství.',
+        message: pick('Zjištěn konflikt pravidel hry Tango.', 'Tango rule conflict detected.'),
+        detail: pick(
+          'Zkontrolujte pravidla tří, rovnováhu a značky sousedství.',
+          'Check the rule of three, row/column balance, and edge markers.'
+        ),
       };
     }
     return null;
-  }, [realTimeCheck, delayedConflicts]);
+  }, [realTimeCheck, delayedConflicts, pick]);
 
   const pushHistory = useCallback(() => {
     setHistory((prev) => [
@@ -545,7 +559,7 @@ export const TangoGame: React.FC<TangoGameProps> = ({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {getDifficultyLabel(level)}
+                {getDifficultyLabel(level, lang)}
               </button>
             );
           })}
@@ -554,9 +568,9 @@ export const TangoGame: React.FC<TangoGameProps> = ({
         <button
           onClick={() => setShowRules(true)}
           className="ml-2 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 shadow-2xs"
-          title="Pravidla Tango"
+          title={pick('Pravidla Tango', 'Tango Rules')}
         >
-          <span>Pravidla</span>
+          <span>{pick('Pravidla', 'Rules')}</span>
         </button>
 
         <button
@@ -566,7 +580,7 @@ export const TangoGame: React.FC<TangoGameProps> = ({
           }}
           className="ml-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs active:scale-95"
         >
-          Nová hra
+          {pick('Nová hra', 'New game')}
         </button>
       </div>
 
@@ -642,9 +656,12 @@ export const TangoGame: React.FC<TangoGameProps> = ({
       {/* Reset Confirmation Modal */}
       <ConfirmModal
         isOpen={showResetConfirm}
-        title="Resetovat hřiště Tango do původního stavu?"
-        description="Všechny vaše zadané symboly budou vymazány. Nápovědy zůstávají zachovány a jejich počet se neobnovuje."
-        confirmLabel="Resetovat hřiště"
+        title={pick('Resetovat hřiště Tango do původního stavu?', 'Reset Tango board to initial state?')}
+        description={pick(
+          'Všechny vaše zadané symboly budou vymazány. Nápovědy zůstávají zachovány a jejich počet se neobnovuje.',
+          'All your placed symbols will be cleared. Used hints remain filled and your hint count is not restored.'
+        )}
+        confirmLabel={pick('Resetovat hřiště', 'Reset board')}
         confirmVariant="danger"
         onConfirm={handleResetBoard}
         onCancel={() => setShowResetConfirm(false)}
@@ -653,9 +670,12 @@ export const TangoGame: React.FC<TangoGameProps> = ({
       {/* New Game Confirmation Modal */}
       <ConfirmModal
         isOpen={showNewGameConfirm}
-        title="Spustit novou hru Tango?"
-        description="Aktuální rozpracovaná hra bude ukončena a vygeneruje se nová hrací plocha s obnovenými 3 nápovědami."
-        confirmLabel="Spustit novou hru"
+        title={pick('Spustit novou hru Tango?', 'Start a new Tango game?')}
+        description={pick(
+          'Aktuální rozpracovaná hra bude ukončena a vygeneruje se nová hrací plocha s obnovenými 3 nápovědami.',
+          'Your current game in progress will end and a fresh puzzle will be generated with 3 hints.'
+        )}
+        confirmLabel={pick('Spustit novou hru', 'Start new game')}
         confirmVariant="primary"
         onConfirm={() => {
           setShowNewGameConfirm(false);

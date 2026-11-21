@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, Check, Sun, Moon, Equal, Lightbulb, RotateCcw, ShieldCheck } from 'lucide-react';
+import { X, Check, Sun, Moon, Lightbulb } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface TangoRulesModalProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface TangoRulesModalProps {
 }
 
 export const TangoRulesModal: React.FC<TangoRulesModalProps> = ({ isOpen, onClose }) => {
+  const { isEn, pick } = useLanguage();
   if (!isOpen) return null;
 
   return (
@@ -16,10 +18,10 @@ export const TangoRulesModal: React.FC<TangoRulesModalProps> = ({ isOpen, onClos
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>Pravidla LinkedIn Tango (6×6)</span>
+              <span>{pick('Pravidla LinkedIn Tango (6×6)', 'LinkedIn Tango (6×6) Rules')}</span>
             </h3>
             <p className="text-xs text-slate-500">
-              Binární logická hra se Sluncem a Měsícem
+              {pick('Binární logická hra se Sluncem a Měsícem', 'Binary logic puzzle with Suns and Moons')}
             </p>
           </div>
           <button
@@ -39,9 +41,17 @@ export const TangoRulesModal: React.FC<TangoRulesModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                1. Rovnováha (3 slunce a 3 měsíce)
+                {pick('1. Rovnováha (3 slunce a 3 měsíce)', '1. Balance (3 suns & 3 moons)')}
               </strong>
-              V každém řádku a v každém sloupci mřížky 6×6 musí být <strong>přesně 3 slunce a 3 měsíce</strong>.
+              {isEn ? (
+                <>
+                  Every row and every column of the 6×6 grid must contain <strong>exactly 3 suns and 3 moons</strong>.
+                </>
+              ) : (
+                <>
+                  V každém řádku a v každém sloupci mřížky 6×6 musí být <strong>přesně 3 slunce a 3 měsíce</strong>.
+                </>
+              )}
             </div>
           </div>
 
@@ -52,9 +62,17 @@ export const TangoRulesModal: React.FC<TangoRulesModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                2. Pravidlo tří (max. 2 stejné vedle sebe)
+                {pick('2. Pravidlo tří (max. 2 stejné vedle sebe)', '2. Rule of three (max 2 adjacent)')}
               </strong>
-              Vedle sebe ani pod sebou nesmí stát <strong>více než dva stejné symboly</strong>. Tři slunce ani tři měsíce za sebou (např. ☀️☀️☀️ nebo 🌙🌙🌙) nejsou povoleny!
+              {isEn ? (
+                <>
+                  No <strong>more than two identical symbols</strong> may appear consecutively horizontally or vertically (no ☀️☀️☀️ or 🌙🌙🌙).
+                </>
+              ) : (
+                <>
+                  Vedle sebe ani pod sebou nesmí stát <strong>více než dva stejné symboly</strong>. Tři slunce ani tři měsíce za sebou (např. ☀️☀️☀️ nebo 🌙🌙🌙) nejsou povoleny!
+                </>
+              )}
             </div>
           </div>
 
@@ -65,9 +83,17 @@ export const TangoRulesModal: React.FC<TangoRulesModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                3. Rovnítka (=)
+                {pick('3. Rovnítka (=)', '3. Equals signs (=)')}
               </strong>
-              Spojují dvě sousední buňky, které <strong>musí mít stejný symbol</strong> (obě ☀️ nebo obě 🌙).
+              {isEn ? (
+                <>
+                  Connect two adjacent cells that <strong>must contain the same symbol</strong> (both ☀️ or both 🌙).
+                </>
+              ) : (
+                <>
+                  Spojují dvě sousední buňky, které <strong>musí mít stejný symbol</strong> (obě ☀️ nebo obě 🌙).
+                </>
+              )}
             </div>
           </div>
 
@@ -78,20 +104,39 @@ export const TangoRulesModal: React.FC<TangoRulesModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                4. Křížky (×)
+                {pick('4. Křížky (×)', '4. Cross signs (×)')}
               </strong>
-              Spojují dvě sousední buňky, které <strong>musí mít rozdílné symboly</strong> (jedno ☀️ a druhé 🌙).
+              {isEn ? (
+                <>
+                  Connect two adjacent cells that <strong>must contain opposite symbols</strong> (one ☀️ and one 🌙).
+                </>
+              ) : (
+                <>
+                  Spojují dvě sousední buňky, které <strong>musí mít rozdílné symboly</strong> (jedno ☀️ a druhé 🌙).
+                </>
+              )}
             </div>
           </div>
 
           {/* Strategy Tip */}
           <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 text-[11px] text-amber-900 flex flex-col gap-1">
-            <strong>Doporučená strategie:</strong>
+            <strong>{pick('Doporučená strategie:', 'Recommended strategy:')}</strong>
             <ul className="list-disc list-inside space-y-0.5">
-              <li>Začněte buňkami se značkami <strong>=</strong> a <strong>×</strong>.</li>
-              <li>Pokud vidíte dvě stejná (☀️☀️), z obou stran doplňte 🌙.</li>
-              <li>Pokud je mezi dvěma stejnými mezera (☀️_☀️), uprostřed musí být 🌙.</li>
-              <li>Jakmile má řádek 3 slunce, zbytek doplňte měsíci!</li>
+              {isEn ? (
+                <>
+                  <li>Start with cells connected by <strong>=</strong> and <strong>×</strong> markers.</li>
+                  <li>Whenever you see two identical symbols (☀️☀️), place 🌙 on both sides.</li>
+                  <li>If there is a single gap between two matching symbols (☀️_☀️), the middle must be 🌙.</li>
+                  <li>Once a row has 3 suns, fill the rest with moons!</li>
+                </>
+              ) : (
+                <>
+                  <li>Začněte buňkami se značkami <strong>=</strong> a <strong>×</strong>.</li>
+                  <li>Pokud vidíte dvě stejná (☀️☀️), z obou stran doplňte 🌙.</li>
+                  <li>Pokud je mezi dvěma stejnými mezera (☀️_☀️), uprostřed musí být 🌙.</li>
+                  <li>Jakmile má řádek 3 slunce, zbytek doplňte měsíci!</li>
+                </>
+              )}
             </ul>
           </div>
 
@@ -102,9 +147,17 @@ export const TangoRulesModal: React.FC<TangoRulesModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                3 Nápovědy & Reset se zachováním nápověd
+                {pick('3 Nápovědy & Reset se zachováním nápověd', '3 Hints & Reset preserves hints')}
               </strong>
-              Při použití tlačítka <em>Reset</em> zůstávají nápovědy a odhalená políčka vyplněná, počet nápověd se neobnovuje.
+              {isEn ? (
+                <>
+                  Using <em>Reset</em> keeps revealed hint cells filled, and your remaining hint count is not restored.
+                </>
+              ) : (
+                <>
+                  Při použití tlačítka <em>Reset</em> zůstávají nápovědy a odhalená políčka vyplněná, počet nápověd se neobnovuje.
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -115,7 +168,7 @@ export const TangoRulesModal: React.FC<TangoRulesModalProps> = ({ isOpen, onClos
           className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
         >
           <Check className="w-4 h-4" />
-          <span>Rozumím, jdeme hrát Tango</span>
+          <span>{pick('Rozumím, jdeme hrát Tango', 'Got it, let’s play Tango')}</span>
         </button>
       </div>
     </div>

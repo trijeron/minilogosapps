@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { BookOpen, CheckCircle2, ArrowRight, Lightbulb, X, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { BookOpen, CheckCircle2, ArrowRight, Lightbulb, X, AlertCircle, RotateCcw, SkipForward } from 'lucide-react';
 import { LearningTask, MatchLearningTask, FillLearningTask, ChoiceLearningTask } from '../types/learningGate';
 import { isFillAnswerCorrect } from '../utils/learningTasks';
 import { sound } from '../utils/audio';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface LearningGateModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
   onComplete,
   onClosePreview,
 }) => {
+  const { pick } = useLanguage();
   const [taskIdx, setTaskIdx] = useState(0);
   const [taskSolved, setTaskSolved] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -46,6 +48,9 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
   // Fill state
   const [fillInput, setFillInput] = useState('');
   const [showFillHint, setShowFillHint] = useState(false);
+  const [fillWrongAttempts, setFillWrongAttempts] = useState(0);
+  const [taskSkipped, setTaskSkipped] = useState(false);
+  const fillInputRef = useRef<HTMLInputElement | null>(null);
 
   // Choice state
   const [wrongChoiceIndices, setWrongChoiceIndices] = useState<Set<number>>(new Set());
@@ -58,12 +63,14 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
     if (!isOpen) return;
     setTaskIdx(0);
     setTaskSolved(false);
+    setTaskSkipped(false);
     setErrorMsg(null);
     setSelectedLeft(null);
     setSelectedRight(null);
     setMatchedLeftIndices(new Set());
     setFillInput('');
     setShowFillHint(false);
+    setFillWrongAttempts(0);
     setWrongChoiceIndices(new Set());
     setSelectedCorrectChoice(null);
   }, [isOpen, tasks]);
@@ -71,12 +78,14 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
   // Reset per-task transition
   useEffect(() => {
     setTaskSolved(false);
+    setTaskSkipped(false);
     setErrorMsg(null);
     setSelectedLeft(null);
     setSelectedRight(null);
     setMatchedLeftIndices(new Set());
     setFillInput('');
     setShowFillHint(false);
+    setFillWrongAttempts(0);
     setWrongChoiceIndices(new Set());
     setSelectedCorrectChoice(null);
   }, [taskIdx]);
@@ -93,17 +102,17 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
 
   const taskTypeLabel =
     currentTask.type === 'match'
-      ? 'Spojování dvojic'
+      ? pick('Spojování dvojic', 'Match pairs')
       : currentTask.type === 'fill'
-      ? 'Doplnění odpovědi'
-      : 'Výběr z možností';
+      ? pick('Doplnění odpovědi', 'Fill in the blank')
+      : pick('Výběr z možností', 'Multiple choice');
 
   const triggerText =
     triggerReason === 'preview'
-      ? 'Náhled úkolu'
+      ? pick('Náhled úkolu', 'Task preview')
       : triggerReason === 'minutes'
-      ? 'Časový limit dosažen'
-      : 'Limit her dosažen';
+      ? pick('Časový limit dosažen', 'Time limit reached')
+      : pick('Limit her dosažen', 'Game limit reached');
 
   const handleAdvance = () => {
     if (!taskSolved) return;
@@ -130,7 +139,9 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
         if (isLastTask) sound.playVictory();
       }
     } else {
-      setErrorMsg('Tato dvojice k sobě nepatří — zkus jinou.');
+      setErrorMsg(
+        pick('Tato dvojice k sobě nepatří — zkus jinou.', 'That pair does not match — try another.')
+      );
       setSelectedLeft(null);
       setSelectedRight(null);
       sound.playErase();
@@ -159,20 +170,69 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
     }
   };
 
-  // --- Fill Handler ---
+  // --- Fill Handlers ---
+  const formatCorrectFillAnswers = (task: FillLearningTask): string => {
+    const raw = [task.answer, ...(task.answers ?? [])];
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const item of raw) {
+      const trimmed = item.trim();
+      const key = trimmed.toLowerCase();
+      if (trimmed && !seen.has(key)) {
+        seen.add(key);
+        unique.push(trimmed);
+      }
+    }
+    return unique.join(' / ');
+  };
+
+  const handleResetFillWord = () => {
+    setFillInput('');
+    setErrorMsg(null);
+    sound.playErase();
+    fillInputRef.current?.focus();
+  };
+
+  const handleSkipFill = (task: FillLearningTask) => {
+    if (taskSolved || fillWrongAttempts < 2) return;
+    setFillInput(task.answer);
+    setTaskSkipped(true);
+    setTaskSolved(true);
+    setErrorMsg(null);
+    sound.playHint();
+  };
+
   const handleFillSubmit = (e: React.FormEvent, task: FillLearningTask) => {
     e.preventDefault();
     if (taskSolved) {
       handleAdvance();
       return;
     }
+    if (fillInput.trim().length === 0) {
+      setErrorMsg(pick('Nejprve napiš odpověď.', 'Please type an answer first.'));
+      fillInputRef.current?.focus();
+      return;
+    }
     if (isFillAnswerCorrect(task, fillInput)) {
       setTaskSolved(true);
+      setTaskSkipped(false);
       setErrorMsg(null);
       if (isLastTask) sound.playVictory();
       else sound.playHint();
     } else {
-      setErrorMsg('Zkus to ještě jednou — zkontroluj překlep.');
+      const nextAttempts = fillWrongAttempts + 1;
+      setFillWrongAttempts(nextAttempts);
+      setErrorMsg(
+        nextAttempts >= 2
+          ? pick(
+              `Zkus to ještě jednou, nebo úkol přeskoč a zobraz si správnou odpověď (pokusy: ${nextAttempts}).`,
+              `Try again, or skip the task to reveal the correct answer (attempts: ${nextAttempts}).`
+            )
+          : pick(
+              'Zkus to ještě jednou — zkontroluj překlep (1. pokus).',
+              'Try again — check your spelling (attempt 1).'
+            )
+      );
       sound.playErase();
     }
   };
@@ -190,7 +250,9 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
       const next = new Set(wrongChoiceIndices);
       next.add(optIdx);
       setWrongChoiceIndices(next);
-      setErrorMsg('To není správná odpověď, zkus jinou možnost.');
+      setErrorMsg(
+        pick('To není správná odpověď, zkus jinou možnost.', 'Not quite right — try another option.')
+      );
       sound.playErase();
     }
   };
@@ -206,7 +268,7 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-black text-slate-900 leading-tight">
-                Učící přestávka
+                {pick('Učící přestávka', 'Learning Break')}
               </h2>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
                 {triggerText} · {taskTypeLabel}
@@ -220,7 +282,7 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
               type="button"
               onClick={onClosePreview}
               className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              aria-label="Zavřít náhled"
+              aria-label={pick('Zavřít náhled', 'Close preview')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -232,7 +294,10 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
               <span>
-                Otázka {taskIdx + 1} z {tasks.length} pro pokračování
+                {pick(
+                  `Otázka ${taskIdx + 1} z ${tasks.length} pro pokračování`,
+                  `Question ${taskIdx + 1} of ${tasks.length} to continue`
+                )}
               </span>
               <span className="tabular-nums text-indigo-700">
                 {Math.round(((taskIdx + (taskSolved ? 1 : 0)) / tasks.length) * 100)} %
@@ -266,8 +331,11 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
         {currentTask.type === 'match' && (
           <div className="flex flex-col gap-2">
             <p className="text-xs text-slate-500">
-              Klikni na slovo vlevo a poté na odpovídající slovo vpravo ({matchedLeftIndices.size}/
-              {currentTask.pairs.length}).
+              {pick(
+                'Klikni na slovo vlevo a poté na odpovídající slovo vpravo',
+                'Tap an item on the left, then its match on the right'
+              )}{' '}
+              ({matchedLeftIndices.size}/{currentTask.pairs.length}).
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               {/* Left Column */}
@@ -328,29 +396,77 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
 
         {/* TYPE 2: FILL IN THE BLANK */}
         {currentTask.type === 'fill' && (
-          <form onSubmit={(e) => handleFillSubmit(e, currentTask)} className="flex flex-col gap-3">
+          <form onSubmit={(e) => handleFillSubmit(e, currentTask)} className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={fillInput}
-                onChange={(e) => {
-                  setFillInput(e.target.value);
-                  if (errorMsg) setErrorMsg(null);
-                }}
-                disabled={taskSolved}
-                autoFocus
-                placeholder="Napiš odpověď..."
-                className="flex-1 min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-emerald-50 disabled:border-emerald-400 disabled:text-emerald-900"
-              />
+              <div className="relative flex-1">
+                <input
+                  ref={fillInputRef}
+                  type="text"
+                  value={fillInput}
+                  onChange={(e) => {
+                    setFillInput(e.target.value);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                  disabled={taskSolved}
+                  autoFocus
+                  placeholder={pick('Napiš odpověď...', 'Type your answer...')}
+                  className={`w-full min-h-[44px] pl-3.5 ${
+                    !taskSolved && fillInput.length > 0 ? 'pr-9' : 'pr-3.5'
+                  } py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                    taskSkipped
+                      ? 'disabled:bg-amber-50 disabled:border-amber-400 disabled:text-amber-950'
+                      : 'disabled:bg-emerald-50 disabled:border-emerald-400 disabled:text-emerald-900'
+                  }`}
+                />
+                {!taskSolved && fillInput.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleResetFillWord}
+                    title={pick('Smazat zadané slovo', 'Clear entered word')}
+                    aria-label={pick('Smazat zadané slovo', 'Clear entered word')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               {!taskSolved && (
                 <button
                   type="submit"
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shrink-0 transition-colors"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shrink-0 transition-colors active:scale-95"
                 >
-                  Zkontrolovat
+                  {pick('Zkontrolovat', 'Check')}
                 </button>
               )}
             </div>
+
+            {/* Reset word & Skip after 2 wrong attempts toolbar */}
+            {!taskSolved && (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetFillWord}
+                  disabled={fillInput.length === 0}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors active:scale-95"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>{pick('Resetovat slovo', 'Reset word')}</span>
+                </button>
+
+                {fillWrongAttempts >= 2 && (
+                  <button
+                    type="button"
+                    onClick={() => handleSkipFill(currentTask)}
+                    className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center gap-1.5 transition-colors active:scale-95"
+                  >
+                    <SkipForward className="w-3.5 h-3.5" />
+                    <span>
+                      {pick('Přeskočit a ukázat správnou odpověď', 'Skip & show answer')}
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {currentTask.hint && !taskSolved && (
               <div>
@@ -360,7 +476,11 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
                   className="text-xs font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-1"
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
-                  <span>{showFillHint ? 'Skrýt nápovědu' : 'Ukázat nápovědu'}</span>
+                  <span>
+                    {showFillHint
+                      ? pick('Skrýt nápovědu', 'Hide hint')
+                      : pick('Ukázat nápovědu', 'Show hint')}
+                  </span>
                 </button>
                 {showFillHint && (
                   <p className="mt-1.5 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
@@ -414,17 +534,32 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
           </div>
         )}
 
-        {/* Solved feedback & Continue CTA */}
+        {/* Solved or Skipped feedback & Continue CTA */}
         {taskSolved && (
           <div className="pt-1 flex flex-col gap-2.5">
-            <div className="px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>
-                {isLastTask
-                  ? 'Výborně! Úkol je splněný, můžeš pokračovat ve hraní.'
-                  : 'Správně! Pokračuj na další úkol.'}
-              </span>
-            </div>
+            {taskSkipped && currentTask.type === 'fill' ? (
+              <div className="px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex flex-col gap-1">
+                <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                  <SkipForward className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>{pick('Úkol přeskočen — správná varianta:', 'Task skipped — correct answer:')}</span>
+                </div>
+                <div className="text-sm font-black text-slate-900 bg-white border border-amber-200 rounded-lg px-3 py-1.5">
+                  {formatCorrectFillAnswers(currentTask)}
+                </div>
+              </div>
+            ) : (
+              <div className="px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  {isLastTask
+                    ? pick(
+                        'Výborně! Úkol je splněný, můžeš pokračovat ve hraní.',
+                        'Great job! Task complete — you can continue playing.'
+                      )
+                    : pick('Správně! Pokračuj na další úkol.', 'Correct! Move on to the next task.')}
+                </span>
+              </div>
+            )}
 
             <button
               type="button"
@@ -432,7 +567,11 @@ export const LearningGateModal: React.FC<LearningGateModalProps> = ({
               className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
             >
               <span>
-                {isLastTask ? (isPreview ? 'Dokončit náhled' : 'Pokračovat ve hře') : 'Další úkol'}
+                {isLastTask
+                  ? isPreview
+                    ? pick('Dokončit náhled', 'Finish preview')
+                    : pick('Pokračovat ve hře', 'Continue playing')
+                  : pick('Další úkol', 'Next task')}
               </span>
               <ArrowRight className="w-4 h-4" />
             </button>

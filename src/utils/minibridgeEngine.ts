@@ -9,6 +9,7 @@ import {
   TrickCard,
   TrumpSuit,
 } from '../types/minibridge';
+import { Language } from '../i18n/LanguageContext';
 
 // Visual alternating order (black, red, black, red) helps children tell suits apart easily
 export const SUIT_ORDER: Suit[] = ['spades', 'hearts', 'clubs', 'diamonds'];
@@ -17,12 +18,12 @@ export const SEATS_CLOCKWISE: Seat[] = ['north', 'east', 'south', 'west'];
 
 export const SUIT_INFO: Record<
   Suit,
-  { symbol: string; labelCs: string; isRed: boolean; shortCs: string }
+  { symbol: string; labelCs: string; labelEn: string; isRed: boolean; shortCs: string; shortEn: string }
 > = {
-  spades: { symbol: '♠', labelCs: 'Piky', shortCs: 'Piky', isRed: false },
-  hearts: { symbol: '♥', labelCs: 'Srdce', shortCs: 'Srdce', isRed: true },
-  diamonds: { symbol: '♦', labelCs: 'Kára', shortCs: 'Kára', isRed: true },
-  clubs: { symbol: '♣', labelCs: 'Trefy', shortCs: 'Trefy', isRed: false },
+  spades: { symbol: '♠', labelCs: 'Piky', labelEn: 'Spades', shortCs: 'Piky', shortEn: 'Spades', isRed: false },
+  hearts: { symbol: '♥', labelCs: 'Srdce', labelEn: 'Hearts', shortCs: 'Srdce', shortEn: 'Hearts', isRed: true },
+  diamonds: { symbol: '♦', labelCs: 'Kára', labelEn: 'Diamonds', shortCs: 'Kára', shortEn: 'Diamonds', isRed: true },
+  clubs: { symbol: '♣', labelCs: 'Trefy', labelEn: 'Clubs', shortCs: 'Trefy', shortEn: 'Clubs', isRed: false },
 };
 
 export const SEAT_LABELS: Record<Seat, string> = {
@@ -32,12 +33,45 @@ export const SEAT_LABELS: Record<Seat, string> = {
   west: 'Západ (AI)',
 };
 
+export const SEAT_LABELS_EN: Record<Seat, string> = {
+  north: 'North (Partner)',
+  east: 'East (AI)',
+  south: 'South (You)',
+  west: 'West (AI)',
+};
+
 export const SEAT_SHORT_LABELS: Record<Seat, string> = {
   north: 'Sever',
   east: 'Východ',
   south: 'Jih',
   west: 'Západ',
 };
+
+export const SEAT_SHORT_LABELS_EN: Record<Seat, string> = {
+  north: 'North',
+  east: 'East',
+  south: 'South',
+  west: 'West',
+};
+
+export function getSeatLabel(seat: Seat, lang: Language = 'cs'): string {
+  return lang === 'en' ? SEAT_LABELS_EN[seat] : SEAT_LABELS[seat];
+}
+
+export function getSeatShortLabel(seat: Seat, lang: Language = 'cs'): string {
+  return lang === 'en' ? SEAT_SHORT_LABELS_EN[seat] : SEAT_SHORT_LABELS[seat];
+}
+
+export function getSeatInitial(seat: Seat, lang: Language = 'cs'): string {
+  if (lang === 'en') {
+    return seat === 'north' ? 'N' : seat === 'east' ? 'E' : seat === 'south' ? 'S' : 'W';
+  }
+  return seat === 'north' ? 'S' : seat === 'east' ? 'V' : seat === 'south' ? 'J' : 'Z';
+}
+
+export function getSuitLabel(suit: Suit, lang: Language = 'cs'): string {
+  return lang === 'en' ? SUIT_INFO[suit].labelEn : SUIT_INFO[suit].labelCs;
+}
 
 export function getRankLabel(rank: Rank): string {
   switch (rank) {
@@ -212,14 +246,14 @@ export function getRequiredTricks(trump: TrumpSuit, level: ContractLevel): numbe
   return 11; // diamonds or clubs
 }
 
-export function getTrumpLabel(trump: TrumpSuit): string {
-  if (trump === 'NT') return 'Bez trumfů (NT)';
-  return `${SUIT_INFO[trump].symbol} ${SUIT_INFO[trump].labelCs}`;
+export function getTrumpLabel(trump: TrumpSuit, lang: Language = 'cs'): string {
+  if (trump === 'NT') return lang === 'en' ? 'No Trump (NT)' : 'Bez trumfů (NT)';
+  return `${SUIT_INFO[trump].symbol} ${getSuitLabel(trump, lang)}`;
 }
 
-export function getTrumpShortLabel(trump: TrumpSuit): string {
+export function getTrumpShortLabel(trump: TrumpSuit, lang: Language = 'cs'): string {
   if (trump === 'NT') return 'NT';
-  return `${SUIT_INFO[trump].symbol} ${SUIT_INFO[trump].labelCs}`;
+  return `${SUIT_INFO[trump].symbol} ${getSuitLabel(trump, lang)}`;
 }
 
 export function getCombinedSuitCounts(handA: Card[], handB: Card[]): Record<Suit, number> {
@@ -238,7 +272,7 @@ export function recommendContract(
   declarerHand: Card[],
   dummyHand: Card[],
   combinedHcp: number
-): { trump: TrumpSuit; level: ContractLevel; reasonCs: string } {
+): { trump: TrumpSuit; level: ContractLevel; reasonCs: string; reasonEn: string } {
   const counts = getCombinedSuitCounts(declarerHand, dummyHand);
   // Prefer major suits (spades, hearts) then minors, picking the longest fit >= 8 cards
   const candidateOrder: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
@@ -264,10 +298,20 @@ export function recommendContract(
       ? `Dohromady máte ${combinedHcp} bodů (25+), takže můžete hlásit Hru.`
       : `Dohromady máte ${combinedHcp} bodů (méně než 25), proto je bezpečnější Částečná hra.`;
 
+  const trumpTextEn =
+    bestSuit !== null
+      ? `Together you hold ${bestCount} cards in ${SUIT_INFO[bestSuit].symbol} ${SUIT_INFO[bestSuit].labelEn} (8+ = a strong trump fit).`
+      : 'You do not have an 8-card fit in any suit, so No Trump is best.';
+  const levelTextEn =
+    combinedHcp >= 25
+      ? `With ${combinedHcp} combined points (25+), you can bid Game.`
+      : `With ${combinedHcp} combined points (under 25), Part Score is safer.`;
+
   return {
     trump,
     level,
     reasonCs: `${trumpText} ${levelText}`,
+    reasonEn: `${trumpTextEn} ${levelTextEn}`,
   };
 }
 

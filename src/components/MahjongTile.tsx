@@ -1,5 +1,7 @@
 import React from 'react';
 import { MahjongTheme, MahjongTile as MahjongTileModel } from '../types/mahjong';
+import { useLanguage } from '../i18n/LanguageContext';
+import { getMahjongTileCorner, getMahjongTileLabel } from '../utils/mahjongEngine';
 
 interface MahjongTileProps {
   tile: MahjongTileModel;
@@ -879,7 +881,11 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
   compact,
   onClick,
 }) => {
+  const { lang, pick } = useLanguage();
   if (tile.removed) return null;
+
+  const tileLabel = getMahjongTileLabel(tile.def, lang);
+  const cornerText = getMahjongTileCorner(tile.def, lang);
 
   const isComic = theme === 'comic';
   const isFairytale = theme === 'fairytale';
@@ -988,8 +994,8 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
     <button
       type="button"
       onClick={onClick}
-      title={`${tile.def.labelCs}${isFree ? '' : ' (zablokovaný kámen)'}`}
-      aria-label={tile.def.labelCs}
+      title={`${tileLabel}${isFree ? '' : pick(' (zablokovaný kámen)', ' (blocked tile)')}`}
+      aria-label={tileLabel}
       style={{
         left: `${leftPct}%`,
         top: `${topPct}%`,
@@ -1003,13 +1009,13 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
         isBlockedShake ? 'ring-2 ring-rose-500' : ''
       }`}
     >
-      {/* Top-left rank / Czech wind-flower badge for quick scanning */}
+      {/* Top-left rank / localized wind-flower badge for quick scanning */}
       <span
         className={`absolute top-0.5 left-0.5 sm:top-1 sm:left-1 leading-none tabular-nums ${
           isComic ? 'font-black' : 'font-extrabold'
         } ${cornerColor} ${compact ? 'text-[7px] sm:text-[9px]' : 'text-[8px] sm:text-[10px]'}`}
       >
-        {tile.def.cornerText}
+        {cornerText}
       </span>
 
       {/* Center tile artwork */}

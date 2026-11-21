@@ -648,6 +648,28 @@ export function getNextExpectedZipNumber(path: number[], numbers: number[]): num
   return maxSeen + 1;
 }
 
+export type ZipBlockedReasonCode = 'start_on_one' | 'wall' | 'wrong_order';
+
+export function formatZipReason(
+  reasonCode: ZipBlockedReasonCode | undefined,
+  expectedNum: number | undefined,
+  lang: 'cs' | 'en' = 'cs',
+  fallbackReason?: string
+): string | undefined {
+  if (!reasonCode) return fallbackReason;
+  if (reasonCode === 'start_on_one') {
+    return lang === 'en' ? 'Start on number 1.' : 'Začněte na čísle 1.';
+  }
+  if (reasonCode === 'wall') {
+    return lang === 'en' ? 'You cannot pass through a wall.' : 'Přes zeď nelze projít.';
+  }
+  if (reasonCode === 'wrong_order') {
+    const num = expectedNum ?? 1;
+    return lang === 'en' ? `Next in order is number ${num}.` : `Další v pořadí je číslo ${num}.`;
+  }
+  return fallbackReason;
+}
+
 /**
  * Validates whether stepping from `path[path.length - 1]` to `nextCell` is legal.
  */
@@ -658,10 +680,10 @@ export function canStepZipPath(
   numbers: number[],
   horizontalWalls: boolean[],
   verticalWalls: boolean[]
-): { ok: boolean; reason?: string } {
+): { ok: boolean; reason?: string; reasonCode?: ZipBlockedReasonCode; expectedNum?: number } {
   if (path.length === 0) {
     if (numbers[nextCell] === 1) return { ok: true };
-    return { ok: false, reason: 'Začněte na čísle 1.' };
+    return { ok: false, reason: 'Začněte na čísle 1.', reasonCode: 'start_on_one' };
   }
 
   const head = path[path.length - 1];
@@ -669,13 +691,18 @@ export function canStepZipPath(
   if (path.includes(nextCell)) return { ok: false };
   if (!areOrthogonalNeighbors(head, nextCell, size)) return { ok: false };
   if (hasZipWallBetween(head, nextCell, size, horizontalWalls, verticalWalls)) {
-    return { ok: false, reason: 'Přes zeď nelze projít.' };
+    return { ok: false, reason: 'Přes zeď nelze projít.', reasonCode: 'wall' };
   }
 
   const expectedNum = getNextExpectedZipNumber(path, numbers);
   const cellNum = numbers[nextCell];
   if (cellNum > 0 && cellNum !== expectedNum) {
-    return { ok: false, reason: `Další v pořadí je číslo ${expectedNum}.` };
+    return {
+      ok: false,
+      reason: `Další v pořadí je číslo ${expectedNum}.`,
+      reasonCode: 'wrong_order',
+      expectedNum,
+    };
   }
 
   return { ok: true };
@@ -686,6 +713,8 @@ export interface ZipInteractionResult {
   path: number[];
   action: 'step' | 'backtrack' | 'head' | 'blocked-line' | 'blocked' | 'noop';
   reason?: string;
+  reasonCode?: ZipBlockedReasonCode;
+  expectedNum?: number;
 }
 
 /**
@@ -707,7 +736,13 @@ export function applyZipCellInteraction(
     if (numbers[targetCell] === 1) {
       return { changed: true, path: [targetCell], action: 'step' };
     }
-    return { changed: false, path, action: 'blocked', reason: 'Začněte na čísle 1.' };
+    return {
+      changed: false,
+      path,
+      action: 'blocked',
+      reason: 'Začněte na čísle 1.',
+      reasonCode: 'start_on_one',
+    };
   }
 
   const existingIdx = path.indexOf(targetCell);
@@ -728,7 +763,14 @@ export function applyZipCellInteraction(
     if (check.ok) {
       return { changed: true, path: [...path, targetCell], action: 'step' };
     }
-    return { changed: false, path, action: 'blocked', reason: check.reason };
+    return {
+      changed: false,
+      path,
+      action: 'blocked',
+      reason: check.reason,
+      reasonCode: check.reasonCode,
+      expectedNum: check.expectedNum,
+    };
   }
 
   // Fast pointer sweep across 2 steps: bridge only if unambiguous single legal intermediate cell exists

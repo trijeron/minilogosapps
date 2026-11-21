@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const { pick } = useLanguage();
   if (!isOpen) return null;
 
   return (
@@ -52,7 +54,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             onClick={onCancel}
             className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
           >
-            Zrušit
+            {pick('Zrušit', 'Cancel')}
           </button>
           <button
             type="button"

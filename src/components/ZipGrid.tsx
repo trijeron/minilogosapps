@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Pause } from 'lucide-react';
 import { ZipBoardSize } from '../types/zip';
 import { getZipHorizontalWallIndex, getZipVerticalWallIndex } from '../utils/zipEngine';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface ZipGridProps {
   size: ZipBoardSize;
@@ -39,6 +40,7 @@ export const ZipGrid: React.FC<ZipGridProps> = ({
   onMoveToCell,
   onEndDrag,
 }) => {
+  const { pick } = useLanguage();
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [activePointerId, setActivePointerId] = useState<number | null>(null);
   const lastCellRef = useRef<number | null>(null);
@@ -373,15 +375,22 @@ export const ZipGrid: React.FC<ZipGridProps> = ({
               <Pause className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-base font-extrabold text-slate-900">Hra je pozastavena</p>
-              <p className="text-xs text-slate-500 mt-0.5">Klikněte pro pokračování v kreslení cesty</p>
+              <p className="text-base font-extrabold text-slate-900">
+                {pick('Hra je pozastavena', 'Game paused')}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {pick(
+                  'Klikněte pro pokračování v kreslení cesty',
+                  'Tap to continue drawing your path'
+                )}
+              </p>
             </div>
             <button
               type="button"
               onClick={onResume}
               className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors"
             >
-              Pokračovat
+              {pick('Pokračovat', 'Resume')}
             </button>
           </div>
         )}

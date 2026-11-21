@@ -1,4 +1,5 @@
 import { Difficulty } from '../types/sudoku';
+import { Language } from '../i18n/LanguageContext';
 
 export function formatTime(totalSeconds: number): string {
   if (isNaN(totalSeconds) || totalSeconds < 0) return '00:00';
@@ -7,13 +8,13 @@ export function formatTime(totalSeconds: number): string {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function getDifficultyLabel(diff: Difficulty): string {
+export function getDifficultyLabel(diff: Difficulty, lang: Language = 'cs'): string {
   switch (diff) {
     case 'easy':
-      return 'Lehká';
+      return lang === 'en' ? 'Easy' : 'Lehká';
     case 'medium':
-      return 'Střední';
+      return lang === 'en' ? 'Medium' : 'Střední';
     case 'hard':
-      return 'Těžká';
+      return lang === 'en' ? 'Hard' : 'Těžká';
   }
 }

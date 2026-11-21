@@ -2,16 +2,16 @@ import { Difficulty } from '../types/sudoku';
 import { QueensBoardSize, QueensCellState, QueensPuzzle } from '../types/queens';
 
 export const REGION_COLORS = [
-  { bg: 'bg-indigo-100/95', border: 'border-indigo-400', hex: '#e0e7ff', name: 'Modrá' },
-  { bg: 'bg-emerald-100/95', border: 'border-emerald-400', hex: '#d1fae5', name: 'Zelená' },
-  { bg: 'bg-amber-100/95', border: 'border-amber-400', hex: '#fef3c7', name: 'Žlutá' },
-  { bg: 'bg-rose-100/95', border: 'border-rose-400', hex: '#ffe4e6', name: 'Růžová' },
-  { bg: 'bg-purple-100/95', border: 'border-purple-400', hex: '#ede9fe', name: 'Fialová' },
-  { bg: 'bg-cyan-100/95', border: 'border-cyan-400', hex: '#cffafe', name: 'Tyrkysová' },
-  { bg: 'bg-teal-100/95', border: 'border-teal-400', hex: '#ccfbf1', name: 'Mátová' },
-  { bg: 'bg-orange-100/95', border: 'border-orange-400', hex: '#ffedd5', name: 'Broskvová' },
-  { bg: 'bg-lime-100/95', border: 'border-lime-400', hex: '#ecfccb', name: 'Limetková' },
-  { bg: 'bg-pink-100/95', border: 'border-pink-400', hex: '#fce7f3', name: 'Malinová' },
+  { bg: 'bg-indigo-100/95', border: 'border-indigo-400', hex: '#e0e7ff', name: 'Modrá', nameEn: 'Blue' },
+  { bg: 'bg-emerald-100/95', border: 'border-emerald-400', hex: '#d1fae5', name: 'Zelená', nameEn: 'Green' },
+  { bg: 'bg-amber-100/95', border: 'border-amber-400', hex: '#fef3c7', name: 'Žlutá', nameEn: 'Yellow' },
+  { bg: 'bg-rose-100/95', border: 'border-rose-400', hex: '#ffe4e6', name: 'Růžová', nameEn: 'Pink' },
+  { bg: 'bg-purple-100/95', border: 'border-purple-400', hex: '#ede9fe', name: 'Fialová', nameEn: 'Purple' },
+  { bg: 'bg-cyan-100/95', border: 'border-cyan-400', hex: '#cffafe', name: 'Tyrkysová', nameEn: 'Cyan' },
+  { bg: 'bg-teal-100/95', border: 'border-teal-400', hex: '#ccfbf1', name: 'Mátová', nameEn: 'Mint' },
+  { bg: 'bg-orange-100/95', border: 'border-orange-400', hex: '#ffedd5', name: 'Broskvová', nameEn: 'Peach' },
+  { bg: 'bg-lime-100/95', border: 'border-lime-400', hex: '#ecfccb', name: 'Limetková', nameEn: 'Lime' },
+  { bg: 'bg-pink-100/95', border: 'border-pink-400', hex: '#fce7f3', name: 'Malinová', nameEn: 'Raspberry' },
 ];
 
 // Find a valid non-touching permutation of size N

@@ -10,8 +10,10 @@ export interface MahjongTileDef {
   suit: MahjongSuit;
   rank: number; // 1..9 for numbered suits, 1..4 for winds/flowers/seasons, 1..3 for dragons
   labelCs: string;
+  labelEn?: string;
   symbol: string;
   cornerText: string;
+  cornerTextEn?: string;
 }
 
 export interface MahjongTile {

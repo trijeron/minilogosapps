@@ -23,6 +23,7 @@ import {
   saveQueensBestTime,
 } from '../utils/storage';
 import { GameTab } from './Header';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface QueensGameProps {
   realTimeCheck: boolean;
@@ -40,6 +41,7 @@ export const QueensGame: React.FC<QueensGameProps> = ({
   onSelectGame,
   externalPaused = false,
 }) => {
+  const { pick } = useLanguage();
   const [boardSize, setBoardSize] = useState<QueensBoardSize>(6);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [regions, setRegions] = useState<number[]>([]);
@@ -236,36 +238,51 @@ export const QueensGame: React.FC<QueensGameProps> = ({
     if (!realTimeCheck) return null;
     if (delayedConflicts.touchingConflicts.size > 0) {
       return {
-        message: 'Dámy se nesmí vzájemně dotýkat!',
-        detail: 'Žádné dvě koruny nesmí sousedit vodorovně, svisle ani diagonálně.',
+        message: pick('Dámy se nesmí vzájemně dotýkat!', 'Queens cannot touch each other!'),
+        detail: pick(
+          'Žádné dvě koruny nesmí sousedit vodorovně, svisle ani diagonálně.',
+          'No two crowns may be adjacent horizontally, vertically, or diagonally.'
+        ),
       };
     }
     if (delayedConflicts.rowConflicts.size > 0) {
       return {
-        message: 'Více dam ve stejném řádku!',
-        detail: 'V každém vodorovném řádku smí být umístěna přesně jedna dáma.',
+        message: pick('Více dam ve stejném řádku!', 'Multiple queens in the same row!'),
+        detail: pick(
+          'V každém vodorovném řádku smí být umístěna přesně jedna dáma.',
+          'Each horizontal row may contain only one queen.'
+        ),
       };
     }
     if (delayedConflicts.colConflicts.size > 0) {
       return {
-        message: 'Více dam ve stejném sloupci!',
-        detail: 'V každém svislém sloupci smí být umístěna přesně jedna dáma.',
+        message: pick('Více dam ve stejném sloupci!', 'Multiple queens in the same column!'),
+        detail: pick(
+          'V každém svislém sloupci smí být umístěna přesně jedna dáma.',
+          'Each vertical column may contain only one queen.'
+        ),
       };
     }
     if (delayedConflicts.regionConflicts.size > 0) {
       return {
-        message: 'Více dam ve stejné barevné oblasti!',
-        detail: 'Každá barevná zóna smí obsahovat pouze jedinou dámu.',
+        message: pick('Více dam ve stejné barevné oblasti!', 'Multiple queens in the same color region!'),
+        detail: pick(
+          'Každá barevná zóna smí obsahovat pouze jedinou dámu.',
+          'Each color zone may contain only a single queen.'
+        ),
       };
     }
     if (delayedConflicts.allViolatingQueens.size > 0) {
       return {
-        message: 'Zjištěn konflikt v pravidlech dam!',
-        detail: 'Zkontrolujte řádky, sloupce, barevné oblasti a diagonální dotyky.',
+        message: pick('Zjištěn konflikt v pravidlech dam!', 'Queens rule conflict detected!'),
+        detail: pick(
+          'Zkontrolujte řádky, sloupce, barevné oblasti a diagonální dotyky.',
+          'Check rows, columns, color regions, and diagonal neighbors.'
+        ),
       };
     }
     return null;
-  }, [realTimeCheck, delayedConflicts]);
+  }, [realTimeCheck, delayedConflicts, pick]);
 
   const pushHistory = useCallback(() => {
     setHistory((prev) => [
@@ -551,7 +568,7 @@ export const QueensGame: React.FC<QueensGameProps> = ({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {sz}×{sz} ({sz} dam)
+                {pick(`${sz}×${sz} (${sz} dam)`, `${sz}×${sz} (${sz} Q)`)}
               </button>
             );
           })}
@@ -560,9 +577,9 @@ export const QueensGame: React.FC<QueensGameProps> = ({
         <button
           onClick={() => setShowRules(true)}
           className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 shadow-2xs"
-          title="Pravidla Queens"
+          title={pick('Pravidla Queens', 'Queens Rules')}
         >
-          <span>Pravidla</span>
+          <span>{pick('Pravidla', 'Rules')}</span>
         </button>
 
         <button
@@ -572,7 +589,7 @@ export const QueensGame: React.FC<QueensGameProps> = ({
           }}
           className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs active:scale-95"
         >
-          Nová hra
+          {pick('Nová hra', 'New game')}
         </button>
       </div>
 
@@ -652,9 +669,12 @@ export const QueensGame: React.FC<QueensGameProps> = ({
       {/* Reset Confirmation Modal */}
       <ConfirmModal
         isOpen={showResetConfirm}
-        title="Resetovat hřiště do původního stavu?"
-        description="Všechny vaše zadané dámy a křížky budou vymazány. Nápovědy zůstávají zachovány a jejich počet se neobnovuje."
-        confirmLabel="Resetovat hřiště"
+        title={pick('Resetovat hřiště do původního stavu?', 'Reset board to initial state?')}
+        description={pick(
+          'Všechny vaše zadané dámy a křížky budou vymazány. Nápovědy zůstávají zachovány a jejich počet se neobnovuje.',
+          'All your placed queens and crosses will be cleared. Used hints remain filled and your hint count is not restored.'
+        )}
+        confirmLabel={pick('Resetovat hřiště', 'Reset board')}
         confirmVariant="danger"
         onConfirm={handleResetBoard}
         onCancel={() => setShowResetConfirm(false)}
@@ -663,9 +683,12 @@ export const QueensGame: React.FC<QueensGameProps> = ({
       {/* New Game Confirmation Modal */}
       <ConfirmModal
         isOpen={showNewGameConfirm}
-        title="Spustit novou hru?"
-        description={`Vygeneruje se nová šachovnice velikosti ${pendingSize || boardSize}×${pendingSize || boardSize} s obnovenými 3 nápovědami.`}
-        confirmLabel="Spustit hru"
+        title={pick('Spustit novou hru?', 'Start a new game?')}
+        description={pick(
+          `Vygeneruje se nová šachovnice velikosti ${pendingSize || boardSize}×${pendingSize || boardSize} s obnovenými 3 nápovědami.`,
+          `A fresh ${pendingSize || boardSize}×${pendingSize || boardSize} board will be generated with 3 hints.`
+        )}
+        confirmLabel={pick('Spustit hru', 'Start game')}
         confirmVariant="primary"
         onConfirm={() => {
           setShowNewGameConfirm(false);

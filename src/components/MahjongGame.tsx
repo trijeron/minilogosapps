@@ -24,12 +24,13 @@ import {
   MahjongTile as MahjongTileModel,
 } from '../types/mahjong';
 import {
-  MAHJONG_LAYOUT_META,
   MAHJONG_MAX_HINTS,
   findMatchingPairs,
   generateSolvableMahjongBoard,
   getFreeTiles,
   getLayoutSlots,
+  getMahjongLayoutLabel,
+  getMahjongTileLabel,
   isTileFree,
   pickHintPair,
   reshuffleRemainingTiles,
@@ -55,6 +56,7 @@ import {
 } from '../utils/storage';
 import { GameTab } from './Header';
 import { SwitchGameStrip } from './SwitchGameStrip';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const ZOOM_MIN = 75;
 const ZOOM_MAX = 250;
@@ -73,6 +75,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
   onSelectGame,
   externalPaused = false,
 }) => {
+  const { lang, isEn, pick } = useLanguage();
   const [layout, setLayout] = useState<MahjongLayoutId>('pyramid');
   const [tiles, setTiles] = useState<MahjongTileModel[]>([]);
   const [history, setHistory] = useState<MahjongMove[]>([]);
@@ -272,7 +275,12 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
       setBlockedUid(tile.uid);
       window.setTimeout(() => setBlockedUid((prev) => (prev === tile.uid ? null : prev)), 350);
       sound.playError();
-      showTempNote('Tento kámen je zablokovaný shora nebo z obou stran.');
+      showTempNote(
+        pick(
+          'Tento kámen je zablokovaný shora nebo z obou stran.',
+          'This tile is blocked from above or on both sides.'
+        )
+      );
       return;
     }
 
@@ -326,7 +334,12 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
       setSelectedUid(tile.uid);
       sound.playNote();
       if (realTimeCheck) {
-        showTempNote(`${first.def.labelCs} a ${tile.def.labelCs} netvoří pár.`);
+        showTempNote(
+          pick(
+            `${getMahjongTileLabel(first.def, lang)} a ${getMahjongTileLabel(tile.def, lang)} netvoří pár.`,
+            `${getMahjongTileLabel(first.def, lang)} and ${getMahjongTileLabel(tile.def, lang)} do not match.`
+          )
+        );
       }
     }
   };
@@ -361,7 +374,12 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
     const pair = pickHintPair(tiles);
     if (!pair) {
       sound.playError();
-      showTempNote('Žádná volná dvojice k nápovědě — zkuste Zamíchat.');
+      showTempNote(
+        pick(
+          'Žádná volná dvojice k nápovědě — zkuste Zamíchat.',
+          'No free matching pairs — try Shuffle.'
+        )
+      );
       return;
     }
 
@@ -377,7 +395,12 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
     setSelectedUid(null);
     setHintUids([]);
     sound.playHint();
-    showTempNote('Zbývající kameny byly znovu promíchány.');
+    showTempNote(
+      pick(
+        'Zbývající kameny byly znovu promíchány.',
+        'Remaining tiles have been reshuffled.'
+      )
+    );
   };
 
   // Render tiles sorted bottom-to-top so upper layers draw cleanly above lower ones
@@ -407,14 +430,18 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {MAHJONG_LAYOUT_META[id].labelCs}
+                {getMahjongLayoutLabel(id, lang)}
               </button>
             );
           })}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          <div className="grid grid-cols-3 p-1 bg-slate-100 rounded-xl gap-1" role="group" aria-label="Styl kamenů">
+          <div
+            className="grid grid-cols-3 p-1 bg-slate-100 rounded-xl gap-1"
+            role="group"
+            aria-label={pick('Styl kamenů', 'Tile theme')}
+          >
             {(['comic', 'fairytale', 'classic'] as MahjongTheme[]).map((mode) => (
               <button
                 key={mode}
@@ -430,10 +457,10 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
                 }`}
               >
                 {mode === 'comic'
-                  ? 'Komiksový'
+                  ? pick('Komiksový', 'Comic')
                   : mode === 'fairytale'
-                    ? 'Pohádkový'
-                    : 'Klasický'}
+                    ? pick('Pohádkový', 'Fairytale')
+                    : pick('Klasický', 'Classic')}
               </button>
             ))}
           </div>
@@ -444,7 +471,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
             className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 whitespace-nowrap"
           >
             <HelpCircle className="w-3.5 h-3.5" />
-            <span>Pravidla</span>
+            <span>{pick('Pravidla', 'Rules')}</span>
           </button>
 
           <button
@@ -453,7 +480,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
             className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform whitespace-nowrap"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Nová hra</span>
+            <span>{pick('Nová hra', 'New game')}</span>
           </button>
         </div>
       </div>
@@ -464,7 +491,11 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           <button
             type="button"
             onClick={() => setIsPaused((prev) => !prev)}
-            title={isPaused ? 'Pokračovat' : 'Pozastavit časomíru'}
+            title={
+              isPaused
+                ? pick('Pokračovat', 'Resume')
+                : pick('Pozastavit časomíru', 'Pause timer')
+            }
             className={`p-1.5 rounded-md transition-colors flex items-center justify-center ${
               isPaused
                 ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
@@ -480,7 +511,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
 
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-500 font-medium leading-none">
-              Časomíra
+              {pick('Časomíra', 'Timer')}
             </span>
             <span className="font-mono text-sm font-bold text-slate-900 tabular-nums">
               {formatTime(elapsedSeconds)}
@@ -492,19 +523,29 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           {isDeadlocked ? (
             <span className="flex items-center gap-1 text-rose-700 font-bold text-xs">
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>0 volných dvojic</span>
+              <span>{pick('0 volných dvojic', '0 free pairs')}</span>
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-slate-700 font-semibold text-xs">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               <span>
-                Zbývá <strong>{remainingCount}</strong> kamenů ·{' '}
-                <strong>{availablePairs.length}</strong>{' '}
-                {availablePairs.length === 1
-                  ? 'tah'
-                  : availablePairs.length < 5
-                    ? 'tahy'
-                    : 'tahů'}
+                {isEn ? (
+                  <>
+                    <strong>{remainingCount}</strong> tiles left ·{' '}
+                    <strong>{availablePairs.length}</strong>{' '}
+                    {availablePairs.length === 1 ? 'move' : 'moves'}
+                  </>
+                ) : (
+                  <>
+                    Zbývá <strong>{remainingCount}</strong> kamenů ·{' '}
+                    <strong>{availablePairs.length}</strong>{' '}
+                    {availablePairs.length === 1
+                      ? 'tah'
+                      : availablePairs.length < 5
+                        ? 'tahy'
+                        : 'tahů'}
+                  </>
+                )}
               </span>
             </span>
           )}
@@ -514,7 +555,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           <Trophy className="w-3.5 h-3.5 text-amber-500" />
           <div className="flex flex-col items-end">
             <span className="text-[10px] text-slate-500 font-medium leading-none">
-              Rekord
+              {pick('Rekord', 'Best')}
             </span>
             <span className="font-mono text-xs font-semibold text-slate-700 tabular-nums">
               {bestTimes[layout] !== null ? formatTime(bestTimes[layout]!) : '--:--'}
@@ -534,7 +575,10 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
         >
           <span>
             {isDeadlocked
-              ? 'Nezbývají žádné volné dvojice! Použijte Zpět nebo Zamíchat kameny.'
+              ? pick(
+                  'Nezbývají žádné volné dvojice! Použijte Zpět nebo Zamíchat kameny.',
+                  'No free matching pairs left! Use Undo or Shuffle tiles.'
+                )
               : statusNote}
           </span>
           {isDeadlocked && (
@@ -543,7 +587,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
               onClick={handleShuffle}
               className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shrink-0"
             >
-              Zamíchat
+              {pick('Zamíchat', 'Shuffle')}
             </button>
           )}
         </div>
@@ -555,8 +599,8 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           type="button"
           onClick={() => handleZoomChange(zoomPct - ZOOM_STEP)}
           disabled={zoomPct <= ZOOM_MIN}
-          title="Zmenšit desku"
-          aria-label="Zmenšit desku"
+          title={pick('Zmenšit desku', 'Zoom out')}
+          aria-label={pick('Zmenšit desku', 'Zoom out')}
           className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-slate-700 active:scale-95 transition-all shrink-0"
         >
           <ZoomOut className="w-4 h-4" />
@@ -569,7 +613,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           step={5}
           value={zoomPct}
           onChange={(e) => handleZoomChange(Number(e.target.value))}
-          aria-label="Přiblížení desky"
+          aria-label={pick('Přiblížení desky', 'Board zoom')}
           className="flex-1 min-w-[60px] h-2 bg-slate-200 rounded-lg accent-emerald-700 cursor-pointer"
         />
 
@@ -577,8 +621,8 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           type="button"
           onClick={() => handleZoomChange(zoomPct + ZOOM_STEP)}
           disabled={zoomPct >= ZOOM_MAX}
-          title="Zvětšit desku"
-          aria-label="Zvětšit desku"
+          title={pick('Zvětšit desku', 'Zoom in')}
+          aria-label={pick('Zvětšit desku', 'Zoom in')}
           className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-slate-700 active:scale-95 transition-all shrink-0"
         >
           <ZoomIn className="w-4 h-4" />
@@ -587,7 +631,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
         <button
           type="button"
           onClick={() => handleZoomChange(zoomPct === 100 ? 150 : 100)}
-          title="Přepnout velikost 100 % / 150 %"
+          title={pick('Přepnout velikost 100 % / 150 %', 'Toggle 100% / 150% zoom')}
           className="px-2 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-800 tabular-nums min-w-[46px] shrink-0"
         >
           {zoomPct}%
@@ -596,7 +640,11 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
         <button
           type="button"
           onClick={handleToggleViewAngle}
-          title={viewAngle === '3d' ? 'Přepnout na plochý pohled shora' : 'Přepnout na 3D šikmý pohled vrstev'}
+          title={
+            viewAngle === '3d'
+              ? pick('Přepnout na plochý pohled shora', 'Switch to flat top-down view')
+              : pick('Přepnout na 3D šikmý pohled vrstev', 'Switch to 3D angled layer view')
+          }
           className={`px-2.5 h-8 rounded-lg border text-xs font-bold flex items-center gap-1 active:scale-95 transition-all shrink-0 ${
             viewAngle === '3d'
               ? 'bg-emerald-700 border-emerald-800 text-white shadow-2xs'
@@ -612,7 +660,9 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
       {selectedTile && !isPaused && !isCompleted && (
         <div className="w-full px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-semibold flex items-center justify-between gap-2">
           <span>
-            Vybráno: <strong>{selectedTile.def.labelCs}</strong> — klepněte na druhý stejný kámen
+            {pick('Vybráno:', 'Selected:')}{' '}
+            <strong>{getMahjongTileLabel(selectedTile.def, lang)}</strong> —{' '}
+            {pick('klepněte na druhý stejný kámen', 'tap a matching tile')}
           </span>
           <button
             type="button"
@@ -620,7 +670,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
             className="px-2 py-0.5 rounded-md bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 text-[11px] font-bold flex items-center gap-1 shrink-0"
           >
             <X className="w-3 h-3" />
-            <span>Zrušit</span>
+            <span>{pick('Zrušit', 'Cancel')}</span>
           </button>
         </div>
       )}
@@ -703,16 +753,18 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
         {/* Frosted Pause Overlay */}
         {isPaused && (
           <div className="absolute inset-0 z-[4000] bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
-            <h3 className="text-base font-bold mb-1">Časomíra pozastavena</h3>
+            <h3 className="text-base font-bold mb-1">
+              {pick('Časomíra pozastavena', 'Timer paused')}
+            </h3>
             <p className="text-xs text-slate-300 mb-4 max-w-xs">
-              Kameny jsou během pauzy skryté.
+              {pick('Kameny jsou během pauzy skryté.', 'Tiles are hidden while paused.')}
             </p>
             <button
               type="button"
               onClick={() => setIsPaused(false)}
               className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md active:scale-95"
             >
-              Pokračovat ve hře
+              {pick('Pokračovat ve hře', 'Resume game')}
             </button>
           </div>
         )}
@@ -727,7 +779,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           className="py-2.5 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
         >
           <Undo2 className="w-4 h-4" />
-          <span>Zpět</span>
+          <span>{pick('Zpět', 'Undo')}</span>
         </button>
 
         <button
@@ -737,7 +789,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           className="py-2.5 px-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition-all tabular-nums"
         >
           <Lightbulb className="w-4 h-4 text-amber-600" />
-          <span>Nápověda ({hintsLeft})</span>
+          <span>{pick(`Nápověda (${hintsLeft})`, `Hint (${hintsLeft})`)}</span>
         </button>
 
         <button
@@ -747,7 +799,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
           className="py-2.5 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
         >
           <Shuffle className="w-4 h-4" />
-          <span>Zamíchat</span>
+          <span>{pick('Zamíchat', 'Shuffle')}</span>
         </button>
       </div>
 
@@ -759,30 +811,33 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
               <Trophy className="w-8 h-8 fill-amber-500 text-amber-600" />
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-1">
-              Vyčištěno!
+              {pick('Vyčištěno!', 'Board cleared!')}
             </h2>
             <p className="text-xs text-slate-500 font-medium mb-4">
-              Úspěšně jste složili {MAHJONG_LAYOUT_META[layout].labelCs}
+              {pick(
+                `Úspěšně jste složili ${getMahjongLayoutLabel(layout, lang)}`,
+                `You successfully cleared ${getMahjongLayoutLabel(layout, lang)}`
+              )}
             </p>
 
             <div className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl p-4 mb-4 flex flex-col gap-2.5 text-xs tabular-nums">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" /> Časomíra
+                  <Clock className="w-3.5 h-3.5 text-slate-400" /> {pick('Časomíra', 'Time')}
                 </span>
                 <span className="font-mono text-base font-extrabold text-emerald-700">
                   {formatTime(elapsedSeconds)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Použité nápovědy</span>
+                <span className="text-slate-500">{pick('Použité nápovědy', 'Hints used')}</span>
                 <span className="font-bold text-slate-800">
                   {MAHJONG_MAX_HINTS - hintsLeft} / {MAHJONG_MAX_HINTS}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-amber-500" /> Osobní rekord
+                  <Star className="w-3.5 h-3.5 text-amber-500" /> {pick('Osobní rekord', 'Personal best')}
                 </span>
                 <span className="font-mono font-semibold text-slate-700">
                   {bestTimes[layout] !== null
@@ -792,7 +847,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
               </div>
               {isNewBest && (
                 <div className="mt-1 py-1 px-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
-                  Nový nejlepší čas!
+                  {pick('Nový nejlepší čas!', 'New personal best!')}
                 </div>
               )}
             </div>
@@ -803,7 +858,7 @@ export const MahjongGame: React.FC<MahjongGameProps> = ({
               className="w-full py-3 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Hrát další hru</span>
+              <span>{pick('Hrát další hru', 'Play again')}</span>
             </button>
 
             <SwitchGameStrip currentGame="mahjong" onSelectGame={onSelectGame} />

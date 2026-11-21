@@ -1,6 +1,7 @@
 import React from 'react';
 import { Undo2, Eraser, Lightbulb, RotateCcw, Crown, X, Sparkles } from 'lucide-react';
 import { QueensCellState } from '../types/queens';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface QueensKeypadProps {
   onMarkSelect: (mark: QueensCellState) => void;
@@ -31,6 +32,7 @@ export const QueensKeypad: React.FC<QueensKeypadProps> = ({
   onToggleAutoCross,
   disabled = false,
 }) => {
+  const { pick } = useLanguage();
   return (
     <div className="w-full flex flex-col gap-2 max-w-[420px] mx-auto">
       {/* Action Tools Row */}
@@ -45,10 +47,10 @@ export const QueensKeypad: React.FC<QueensKeypadProps> = ({
               ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs'
               : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
           }`}
-          title="Vrátit poslední tah"
+          title={pick('Vrátit poslední tah', 'Undo last move')}
         >
           <Undo2 className="w-4 h-4 mb-0.5" />
-          <span className="text-[10px] tracking-tight">Zpět</span>
+          <span className="text-[10px] tracking-tight">{pick('Zpět', 'Undo')}</span>
         </button>
 
         {/* Erase */}
@@ -57,10 +59,10 @@ export const QueensKeypad: React.FC<QueensKeypadProps> = ({
           onClick={onErase}
           disabled={disabled}
           className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs transition-all text-xs font-semibold"
-          title="Smazat políčko"
+          title={pick('Smazat políčko', 'Erase cell')}
         >
           <Eraser className="w-4 h-4 mb-0.5 text-slate-600" />
-          <span className="text-[10px] tracking-tight">Smazat</span>
+          <span className="text-[10px] tracking-tight">{pick('Smazat', 'Erase')}</span>
         </button>
 
         {/* Hint (Max 3) */}
@@ -73,13 +75,13 @@ export const QueensKeypad: React.FC<QueensKeypadProps> = ({
               ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 active:scale-95 shadow-2xs'
               : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
           }`}
-          title={`Nápověda (zbývá: ${hintsLeft}/3)`}
+          title={pick(`Nápověda (zbývá: ${hintsLeft}/3)`, `Hint (${hintsLeft}/3 left)`)}
         >
           <Lightbulb
             className={`w-4 h-4 mb-0.5 ${hintsLeft > 0 ? 'fill-amber-400 text-amber-600' : 'text-slate-300'}`}
           />
           <span className="text-[10px] tracking-tight">
-            Nápověda <span className="font-mono">({hintsLeft})</span>
+            {pick('Nápověda', 'Hint')} <span className="font-mono">({hintsLeft})</span>
           </span>
         </button>
 
@@ -89,7 +91,7 @@ export const QueensKeypad: React.FC<QueensKeypadProps> = ({
           onClick={onResetBoard}
           disabled={disabled}
           className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 active:scale-95 shadow-2xs transition-all text-xs font-semibold"
-          title="Resetovat hřiště (nápovědy zůstávají)"
+          title={pick('Resetovat hřiště (nápovědy zůstávají)', 'Reset board (hints remain)')}
         >
           <RotateCcw className="w-4 h-4 mb-0.5 text-slate-600" />
           <span className="text-[10px] tracking-tight">Reset</span>
@@ -109,9 +111,11 @@ export const QueensKeypad: React.FC<QueensKeypadProps> = ({
             <Crown className="w-6 h-6 fill-current" />
           </div>
           <div className="flex flex-col text-left">
-            <span className="text-sm font-extrabold leading-tight">Dáma (Koruna)</span>
+            <span className="text-sm font-extrabold leading-tight">
+              {pick('Dáma (Koruna)', 'Queen (Crown)')}
+            </span>
             <span className="text-[11px] font-mono text-amber-800 font-semibold leading-tight">
-              {placedQueens} / {maxQueens} umístěno
+              {pick(`${placedQueens} / ${maxQueens} umístěno`, `${placedQueens} / ${maxQueens} placed`)}
             </span>
           </div>
         </button>
@@ -127,9 +131,11 @@ export const QueensKeypad: React.FC<QueensKeypadProps> = ({
             <X className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div className="flex flex-col text-left">
-            <span className="text-sm font-extrabold leading-tight">Křížek (✕)</span>
+            <span className="text-sm font-extrabold leading-tight">
+              {pick('Křížek (✕)', 'Cross (✕)')}
+            </span>
             <span className="text-[11px] text-slate-500 font-medium leading-tight">
-              Vyloučené pole
+              {pick('Vyloučené pole', 'Excluded cell')}
             </span>
           </div>
         </button>
@@ -151,11 +157,13 @@ export const QueensKeypad: React.FC<QueensKeypadProps> = ({
           >
             <Sparkles className="w-2.5 h-2.5 fill-current" />
           </div>
-          <span className="text-[11px]">Auto-křížky okolo dámy</span>
+          <span className="text-[11px]">
+            {pick('Auto-křížky okolo dámy', 'Auto-cross around queen')}
+          </span>
         </button>
 
         <span className="text-[10px] text-slate-600 font-medium">
-          1. klik = 👑 Dáma · 2. klik = ✕ Křížek
+          {pick('1. klik = 👑 Dáma · 2. klik = ✕ Křížek', '1st tap = 👑 Queen · 2nd tap = ✕ Cross')}
         </span>
       </div>
     </div>

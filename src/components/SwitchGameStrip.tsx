@@ -1,6 +1,7 @@
 import React from 'react';
 import { Grid, Sun, Crown, Spade, Layers, Route } from 'lucide-react';
 import { GameTab } from './Header';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface SwitchGameStripProps {
   currentGame: GameTab;
@@ -20,13 +21,14 @@ export const SwitchGameStrip: React.FC<SwitchGameStripProps> = ({
   currentGame,
   onSelectGame,
 }) => {
+  const { pick } = useLanguage();
   if (!onSelectGame) return null;
   const others = GAME_OPTIONS.filter((g) => g.id !== currentGame);
 
   return (
     <div className="w-full pt-3 mt-3 border-t border-slate-200/80 flex flex-col gap-2">
       <p className="text-[11px] font-bold text-slate-500 text-center">
-        Přejít na jinou hru
+        {pick('Přejít na jinou hru', 'Switch to another game')}
       </p>
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
         {others.map((g) => (
